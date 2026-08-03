@@ -1,8 +1,7 @@
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck, UserRound } from "lucide-react";
 import type { Metadata } from "next";
 
 import { PageHeader } from "@/components/layout/page-header";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardDescription,
@@ -10,82 +9,99 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { ProviderStatus } from "@/components/ui/provider-status";
+import {
+  DeleteAccountForm,
+  ProfileForm,
+} from "@/features/auth/components/account-forms";
+import { getAuthenticatedUser } from "@/lib/supabase/auth";
 
 export const metadata: Metadata = { title: "Settings" };
 
-export default function SettingsPage() {
+export default async function SettingsPage({
+  searchParams,
+}: {
+  readonly searchParams: Promise<{ password?: string }>;
+}) {
+  const { password } = await searchParams;
+  const { supabase, user } = await getAuthenticatedUser();
+  const [{ data: profile }, { data: spotifyConnection }] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("display_name, preferred_ai_provider")
+      .single(),
+    supabase.from("spotify_connections").select("status").maybeSingle(),
+  ]);
+
   return (
     <div className="page-shell">
       <PageHeader
         eyebrow="Settings"
         title="Connections without lock-in."
-        description="Your CrateCompass identity stays independent. External providers remain optional, attributable, and revocable."
+        description={`Signed in as ${user.email ?? "your CrateCompass account"}. Your identity stays independent from optional providers.`}
       />
+      {password === "updated" ? (
+        <p role="status" className="mb-6 text-sm text-[var(--success-soft)]">
+          Your password has been updated.
+        </p>
+      ) : null}
       <div className="grid gap-6 lg:grid-cols-2">
+        <Card variant="raised">
+          <CardHeader>
+            <UserRound
+              aria-hidden="true"
+              className="size-6 text-[var(--amber-soft)]"
+            />
+            <CardTitle className="pt-4">Profile</CardTitle>
+            <CardDescription>
+              Stored in your RLS-protected profile row.
+            </CardDescription>
+          </CardHeader>
+          <ProfileForm
+            displayName={profile?.display_name ?? "Listener"}
+            preferredAiProvider={profile?.preferred_ai_provider ?? "openai"}
+          />
+        </Card>
+
         <Card variant="raised">
           <CardHeader>
             <CardTitle>Provider readiness</CardTitle>
             <CardDescription>
-              Foundation states only; no credentials are loaded by this page.
+              Credentials remain server-only and optional.
             </CardDescription>
           </CardHeader>
           <div className="space-y-3">
             <ProviderStatus
               name="Supabase"
-              status="not-configured"
-              description="Primary authentication and RLS database planned for Phase 2."
+              status="available"
+              description="Authentication, sessions, profiles, and RLS are active."
             />
             <ProviderStatus
               name="Spotify"
-              status="not-configured"
-              description="Optional connected account planned for Phase 3."
+              status={spotifyConnection ? "available" : "not-configured"}
+              description="Optional connected account arrives in Phase 3."
             />
             <ProviderStatus
               name="MusicBrainz"
               status="not-configured"
-              description="Canonical identity and discography planned for Phase 4."
-            />
-            <ProviderStatus
-              name="Discovery and AI"
-              status="not-configured"
-              description="Provider gates remain intentionally closed."
+              description="Canonical identity and discography arrive in Phase 4."
             />
           </div>
         </Card>
 
-        <Card>
+        <Card className="lg:col-span-2">
           <CardHeader>
             <ShieldCheck
               aria-hidden="true"
-              className="size-6 text-[var(--success-soft)]"
+              className="size-6 text-[var(--danger-soft)]"
             />
-            <CardTitle className="pt-4">Privacy controls</CardTitle>
+            <CardTitle className="pt-4">Delete account</CardTitle>
             <CardDescription>
-              Disconnect and deletion actions are visible now but remain
-              disabled until their secure workflows exist.
+              This permanently deletes the Supabase identity and cascades to all
+              CrateCompass-owned rows. Re-enter your password to verify recent
+              authentication.
             </CardDescription>
           </CardHeader>
-          <div className="space-y-3">
-            <Button
-              variant="secondary"
-              className="w-full justify-start"
-              disabled
-            >
-              Disconnect Spotify
-            </Button>
-            <Button
-              variant="destructive"
-              className="w-full justify-start"
-              disabled
-            >
-              Delete CrateCompass account
-            </Button>
-          </div>
-          <p className="mt-5 text-sm leading-6 text-[var(--muted)]">
-            Spotify data will never be sent to an AI provider. These controls
-            will include confirmation, recent authentication, and clear
-            outcomes.
-          </p>
+          <DeleteAccountForm />
         </Card>
       </div>
     </div>
