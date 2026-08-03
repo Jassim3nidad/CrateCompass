@@ -3,9 +3,14 @@ import Link from "next/link";
 
 import { NavLink } from "@/components/layout/nav-link";
 import { Button } from "@/components/ui/button";
+import { signOut } from "@/features/auth/actions";
 import { primaryNavigation, secondaryNavigation } from "@/lib/navigation";
+import { createClient } from "@/lib/supabase/server";
 
-export function SiteHeader() {
+export async function SiteHeader() {
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getClaims();
+  const isAuthenticated = Boolean(data?.claims?.sub);
   return (
     <header className="sticky top-0 z-40 border-b border-[var(--border)] bg-[color-mix(in_srgb,var(--background)_88%,transparent)] backdrop-blur-xl">
       <div className="mx-auto flex h-17 max-w-[90rem] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
@@ -38,12 +43,22 @@ export function SiteHeader() {
         </nav>
 
         <div className="hidden items-center gap-2 lg:flex">
-          <Button asChild variant="ghost" size="sm">
-            <Link href="/settings">Settings</Link>
-          </Button>
-          <Button asChild variant="secondary" size="sm">
-            <Link href="/auth/sign-in">Sign in</Link>
-          </Button>
+          {isAuthenticated ? (
+            <>
+              <Button asChild variant="ghost" size="sm">
+                <Link href="/settings">Settings</Link>
+              </Button>
+              <form action={signOut}>
+                <Button type="submit" variant="secondary" size="sm">
+                  Sign out
+                </Button>
+              </form>
+            </>
+          ) : (
+            <Button asChild variant="secondary" size="sm">
+              <Link href="/auth/sign-in">Sign in</Link>
+            </Button>
+          )}
         </div>
 
         <details className="group relative lg:hidden">
@@ -72,9 +87,21 @@ export function SiteHeader() {
                   </NavLink>
                 );
               })}
-              <Button asChild variant="accent" className="mt-2 w-full">
-                <Link href="/auth/sign-in">Sign in</Link>
-              </Button>
+              {isAuthenticated ? (
+                <form action={signOut}>
+                  <Button
+                    type="submit"
+                    variant="secondary"
+                    className="mt-2 w-full"
+                  >
+                    Sign out
+                  </Button>
+                </form>
+              ) : (
+                <Button asChild variant="accent" className="mt-2 w-full">
+                  <Link href="/auth/sign-in">Sign in</Link>
+                </Button>
+              )}
             </nav>
           </div>
         </details>
