@@ -1,115 +1,197 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
-import { useForm } from "react-hook-form";
-import { toast } from "sonner";
-import { z } from "zod";
+import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FieldDescription, FieldError, Label } from "@/components/ui/label";
-import { PhaseNotice } from "@/components/ui/phase-notice";
+import {
+  requestPasswordReset,
+  signIn,
+  signUp,
+  updatePassword,
+} from "@/features/auth/actions";
+import { initialAuthActionState } from "@/features/auth/state";
 
-const authSchema = z.object({
-  email: z.string().trim().email("Enter a valid email address."),
-  password: z.string().min(8, "Use at least 8 characters."),
-});
+type AuthMode = "sign-in" | "sign-up" | "forgot-password" | "update-password";
 
-type AuthValues = z.infer<typeof authSchema>;
+const actions = {
+  "sign-in": signIn,
+  "sign-up": signUp,
+  "forgot-password": requestPasswordReset,
+  "update-password": updatePassword,
+} as const;
 
-export function AuthForm({ mode }: { readonly mode: "sign-in" | "sign-up" }) {
-  const isSignIn = mode === "sign-in";
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<AuthValues>({
-    resolver: zodResolver(authSchema),
-    defaultValues: { email: "", password: "" },
-  });
-
-  const onSubmit = () => {
-    toast.info("Authentication is not connected yet", {
-      description: "This validated shell will connect to Supabase in Phase 2.",
-    });
+function SubmitButton({ mode }: { readonly mode: AuthMode }) {
+  const { pending } = useFormStatus();
+  const labels: Record<AuthMode, string> = {
+    "sign-in": "Continue",
+    "sign-up": "Create account",
+    "forgot-password": "Send reset link",
+    "update-password": "Update password",
   };
 
   return (
-    <form className="space-y-5" onSubmit={handleSubmit(onSubmit)} noValidate>
-      <PhaseNotice>
-        Foundation preview only. Credentials are validated in the browser and
-        are not sent or stored.
-      </PhaseNotice>
+    <Button
+      type="submit"
+      variant="accent"
+      className="w-full"
+      disabled={pending}
+    >
+      {pending ? "Working…" : labels[mode]}
+      <ArrowRight aria-hidden="true" className="size-4" />
+    </Button>
+  );
+}
 
-      <div className="space-y-2">
-        <Label htmlFor={`${mode}-email`}>Email address</Label>
-        <Input
-          id={`${mode}-email`}
-          type="email"
-          autoComplete="email"
-          aria-describedby={`${mode}-email-description ${mode}-email-error`}
-          aria-invalid={Boolean(errors.email)}
-          placeholder="listener@example.com"
-          {...register("email")}
-        />
-        <FieldDescription id={`${mode}-email-description`}>
-          Your CrateCompass identity will remain separate from Spotify.
-        </FieldDescription>
-        {errors.email ? (
-          <FieldError id={`${mode}-email-error`}>
-            {errors.email.message}
-          </FieldError>
-        ) : null}
-      </div>
+export function AuthForm({
+  mode,
+  returnTo,
+}: {
+  readonly mode: AuthMode;
+  readonly returnTo?: string | undefined;
+}) {
+  const [state, formAction] = useActionState(
+    actions[mode],
+    initialAuthActionState,
+  );
+  const isSignIn = mode === "sign-in";
+  const isSignUp = mode === "sign-up";
+  const isForgotPassword = mode === "forgot-password";
+  const showsEmail = mode !== "update-password";
+  const showsPassword = !isForgotPassword;
 
-      <div className="space-y-2">
-        <div className="flex items-center justify-between gap-3">
-          <Label htmlFor={`${mode}-password`}>Password</Label>
-          {isSignIn ? (
-            <span className="text-xs text-[var(--muted-dim)]">
-              Reset arrives in Phase 2
-            </span>
+  return (
+    <form className="space-y-5" action={formAction} noValidate>
+      {returnTo ? (
+        <input type="hidden" name="returnTo" value={returnTo} />
+      ) : null}
+
+      {isSignUp ? (
+        <div className="space-y-2">
+          <Label htmlFor="display-name">Display name</Label>
+          <Input
+            id="display-name"
+            name="displayName"
+            autoComplete="name"
+            aria-invalid={Boolean(state.fieldErrors?.displayName)}
+            aria-describedby="display-name-error"
+          />
+          {state.fieldErrors?.displayName ? (
+            <FieldError id="display-name-error">
+              {state.fieldErrors.displayName[0]}
+            </FieldError>
           ) : null}
         </div>
-        <Input
-          id={`${mode}-password`}
-          type="password"
-          autoComplete={isSignIn ? "current-password" : "new-password"}
-          aria-describedby={`${mode}-password-description ${mode}-password-error`}
-          aria-invalid={Boolean(errors.password)}
-          {...register("password")}
-        />
-        <FieldDescription id={`${mode}-password-description`}>
-          Use at least 8 characters for this foundation validation.
-        </FieldDescription>
-        {errors.password ? (
-          <FieldError id={`${mode}-password-error`}>
-            {errors.password.message}
-          </FieldError>
-        ) : null}
-      </div>
+      ) : null}
 
-      <Button
-        type="submit"
-        variant="accent"
-        className="w-full"
-        disabled={isSubmitting}
-      >
-        {isSignIn ? "Continue" : "Create account"}
-        <ArrowRight aria-hidden="true" className="size-4" />
-      </Button>
+      {showsEmail ? (
+        <div className="space-y-2">
+          <Label htmlFor={`${mode}-email`}>Email address</Label>
+          <Input
+            id={`${mode}-email`}
+            name="email"
+            type="email"
+            autoComplete="email"
+            aria-describedby={`${mode}-email-description ${mode}-email-error`}
+            aria-invalid={Boolean(state.fieldErrors?.email)}
+            placeholder="listener@example.com"
+          />
+          <FieldDescription id={`${mode}-email-description`}>
+            Your CrateCompass identity remains separate from Spotify.
+          </FieldDescription>
+          {state.fieldErrors?.email ? (
+            <FieldError id={`${mode}-email-error`}>
+              {state.fieldErrors.email[0]}
+            </FieldError>
+          ) : null}
+        </div>
+      ) : null}
 
-      <p className="text-center text-sm text-[var(--muted)]">
-        {isSignIn ? "New to CrateCompass?" : "Already have an account?"}{" "}
-        <Link
-          className="font-semibold text-[var(--foreground)] underline decoration-[var(--border-strong)] underline-offset-4 hover:decoration-[var(--foreground)]"
-          href={isSignIn ? "/auth/sign-up" : "/auth/sign-in"}
+      {showsPassword ? (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <Label htmlFor={`${mode}-password`}>
+              {mode === "update-password" ? "New password" : "Password"}
+            </Label>
+            {isSignIn ? (
+              <Link
+                href="/auth/forgot-password"
+                className="text-xs text-[var(--muted)] underline underline-offset-4"
+              >
+                Forgot password?
+              </Link>
+            ) : null}
+          </div>
+          <Input
+            id={`${mode}-password`}
+            name="password"
+            type="password"
+            autoComplete={isSignIn ? "current-password" : "new-password"}
+            aria-describedby={`${mode}-password-description ${mode}-password-error`}
+            aria-invalid={Boolean(state.fieldErrors?.password)}
+          />
+          {!isSignIn ? (
+            <FieldDescription id={`${mode}-password-description`}>
+              Use 10+ characters with upper- and lowercase letters and a number.
+            </FieldDescription>
+          ) : null}
+          {state.fieldErrors?.password ? (
+            <FieldError id={`${mode}-password-error`}>
+              {state.fieldErrors.password[0]}
+            </FieldError>
+          ) : null}
+        </div>
+      ) : null}
+
+      {mode === "update-password" ? (
+        <div className="space-y-2">
+          <Label htmlFor="confirm-password">Confirm new password</Label>
+          <Input
+            id="confirm-password"
+            name="confirmPassword"
+            type="password"
+            autoComplete="new-password"
+            aria-invalid={Boolean(state.fieldErrors?.confirmPassword)}
+            aria-describedby="confirm-password-error"
+          />
+          {state.fieldErrors?.confirmPassword ? (
+            <FieldError id="confirm-password-error">
+              {state.fieldErrors.confirmPassword[0]}
+            </FieldError>
+          ) : null}
+        </div>
+      ) : null}
+
+      {state.message ? (
+        <p
+          role={state.status === "error" ? "alert" : "status"}
+          className={
+            state.status === "error"
+              ? "text-sm text-[var(--danger-soft)]"
+              : "text-sm text-[var(--success-soft)]"
+          }
         >
-          {isSignIn ? "Create an account" : "Sign in"}
-        </Link>
-      </p>
+          {state.message}
+        </p>
+      ) : null}
+
+      <SubmitButton mode={mode} />
+
+      {isSignIn || isSignUp ? (
+        <p className="text-center text-sm text-[var(--muted)]">
+          {isSignIn ? "New to CrateCompass?" : "Already have an account?"}{" "}
+          <Link
+            className="font-semibold text-[var(--foreground)] underline decoration-[var(--border-strong)] underline-offset-4 hover:decoration-[var(--foreground)]"
+            href={isSignIn ? "/auth/sign-up" : "/auth/sign-in"}
+          >
+            {isSignIn ? "Create an account" : "Sign in"}
+          </Link>
+        </p>
+      ) : null}
     </form>
   );
 }
