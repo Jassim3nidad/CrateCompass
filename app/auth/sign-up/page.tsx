@@ -6,7 +6,12 @@ import { AuthForm } from "@/features/auth/components/auth-form";
 
 export const metadata: Metadata = { title: "Create account" };
 
-export default function SignUpPage() {
+export default async function SignUpPage({
+  searchParams,
+}: {
+  readonly searchParams: Promise<{ returnTo?: string }>;
+}) {
+  const { returnTo } = await searchParams;
   return (
     <div className="page-shell grid min-h-[calc(100vh-13rem)] place-items-center">
       <div className="w-full max-w-md">
@@ -23,7 +28,7 @@ export default function SignUpPage() {
           </p>
         </div>
         <Card variant="raised">
-          <AuthForm mode="sign-up" />
+          <AuthForm mode="sign-up" returnTo={returnTo} />
         </Card>
       </div>
     </div>
