@@ -47,7 +47,7 @@ export class AiUsageLimitError extends Error {
  */
 export async function claimAiUsage(input: {
   readonly userId: string;
-  readonly provider: "anthropic" | "openai" | "openrouter";
+  readonly provider: "anthropic" | "openai" | "openrouter" | "gemini";
   readonly operation: string;
 }): Promise<void> {
   const { data, error } = await createAdminClient().rpc("claim_ai_usage", {
