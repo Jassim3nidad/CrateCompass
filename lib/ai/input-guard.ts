@@ -12,8 +12,11 @@
  * values are branded so they are not assignable to plain-string AI inputs.
  */
 
+import { isAiApprovedProvenance } from "@/types/music";
+
 export type AiBoundaryReason =
   | "forbidden-key"
+  | "unapproved-provenance"
   | "spotify-uri"
   | "spotify-host"
   | "credential"
@@ -115,10 +118,25 @@ function walk(value: unknown, path: string, depth: number): void {
         );
       }
 
+      const childPath = path ? `${path}.${key}` : key;
+
+      // Positive control alongside the negative checks: every externally
+      // sourced fact declares where it came from, and only sources whose terms
+      // permit the processing may travel. Spotify is never on that list, so
+      // this catches Spotify-derived data even when it carries no telltale
+      // key, URI or host.
+      if (
+        key === "provenance" &&
+        typeof nested === "string" &&
+        !isAiApprovedProvenance(nested)
+      ) {
+        throw new AiBoundaryViolationError("unapproved-provenance", childPath);
+      }
+
       // Key names are attacker-influenced too when they come from provider
       // payloads, so they are string-checked alongside values.
-      checkString(key, path ? `${path}.${key}` : key);
-      walk(nested, path ? `${path}.${key}` : key, depth + 1);
+      checkString(key, childPath);
+      walk(nested, childPath, depth + 1);
     }
 
     return;
