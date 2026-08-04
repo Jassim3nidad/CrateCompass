@@ -13,7 +13,13 @@ process.env.MUSICBRAINZ_CONTACT = "synthetic-test@cratecompass.invalid";
 process.env.DISCOVERY_PROVIDER = "listenbrainz";
 delete process.env.LISTENBRAINZ_USER_TOKEN;
 delete process.env.LISTENBRAINZ_SIMILARITY_ALGORITHM;
-process.env.AI_PROVIDER = "openai";
+process.env.AI_PROVIDER = "openrouter";
+process.env.OPENROUTER_API_KEY = "sk-or-v1-synthetic-test-key-never-real";
+process.env.OPENROUTER_MODEL = "synthetic/test-model";
+process.env.ANTHROPIC_API_KEY = "sk-ant-synthetic-test-key-never-real";
+process.env.ANTHROPIC_MODEL = "claude-opus-5";
+process.env.OPENAI_API_KEY = "sk-synthetic-test-key-never-real";
+process.env.OPENAI_MODEL = "gpt-synthetic-test-model";
 process.env.SPOTIFY_CLIENT_ID = "synthetic-test-client-id";
 process.env.SPOTIFY_CLIENT_SECRET = "synthetic-test-client-secret-never-read";
 process.env.SPOTIFY_REDIRECT_URI =
