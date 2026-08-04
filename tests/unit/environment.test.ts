@@ -84,6 +84,24 @@ describe("AI provider environment", () => {
     ).toThrow(/ANTHROPIC_MODEL.*AI_PROVIDER is "anthropic"/i);
   });
 
+  it("requires Gemini credentials when it is selected", () => {
+    expect(() =>
+      validateServerEnvironment({
+        ...validEnvironment,
+        AI_PROVIDER: "gemini",
+      }),
+    ).toThrow(/GEMINI_API_KEY.*AI_PROVIDER is "gemini"/i);
+
+    expect(() =>
+      validateServerEnvironment({
+        ...validEnvironment,
+        AI_PROVIDER: "gemini",
+        GEMINI_API_KEY: "synthetic",
+        GEMINI_MODEL: "gemini-3.5-flash-lite",
+      }),
+    ).not.toThrow();
+  });
+
   it("requires OpenRouter credentials when it is selected", () => {
     expect(() =>
       validateServerEnvironment({
