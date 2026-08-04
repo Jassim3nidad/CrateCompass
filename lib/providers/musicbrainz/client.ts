@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { getServerEnvironment } from "@/lib/env";
 import { logger } from "@/lib/observability/logger";
+import { CACHE_TTL_MS, createTtlCache } from "@/lib/providers/cache";
 import { paced } from "@/lib/providers/musicbrainz/pacer";
 import {
   asMusicBrainzId,
@@ -30,10 +31,39 @@ const API_ORIGIN = "https://musicbrainz.org";
 const WEB_ORIGIN = "https://musicbrainz.org";
 const REQUEST_TIMEOUT_MS = 10_000;
 const MAX_ATTEMPTS = 3;
+const MAX_RETRY_WAIT_SECONDS = 10;
+
+/** Shape of the live MusicBrainz error body, confirmed against 400 responses. */
+const errorBodySchema = z.object({
+  error: z.string(),
+  help: z.string().optional(),
+});
+
+function sleep(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+function parseRetryAfter(response: Response): number | undefined {
+  const header = response.headers.get("retry-after");
+  if (!header) return undefined;
+
+  const seconds = Number.parseInt(header, 10);
+  return Number.isFinite(seconds) && seconds >= 0 ? seconds : undefined;
+}
+
+/** MusicBrainz returns genres and tags as objects with a `name` and a count. */
+const namedTagSchema = z.array(z.object({ name: z.string() })).optional();
+
+function toNames(
+  entries: readonly { readonly name: string }[] | undefined,
+): readonly string[] {
+  return (entries ?? []).map((entry) => entry.name);
+}
 
 export type MusicBrainzFailureKind =
   | "not-configured"
   | "not-found"
+  | "invalid-request"
   | "rate-limited"
   | "invalid-response"
   | "unavailable";
@@ -41,16 +71,21 @@ export type MusicBrainzFailureKind =
 export class MusicBrainzError extends Error {
   readonly kind: MusicBrainzFailureKind;
   readonly status: number | undefined;
+  readonly retryAfterSeconds: number | undefined;
 
   constructor(
     kind: MusicBrainzFailureKind,
     message: string,
-    status?: number | undefined,
+    options: {
+      readonly status?: number | undefined;
+      readonly retryAfterSeconds?: number | undefined;
+    } = {},
   ) {
     super(message);
     this.name = "MusicBrainzError";
     this.kind = kind;
-    this.status = status;
+    this.status = options.status;
+    this.retryAfterSeconds = options.retryAfterSeconds;
   }
 }
 
@@ -142,34 +177,54 @@ async function request(path: string, operation: string): Promise<unknown> {
       return response.json();
     }
 
-    if (response.status === 404) {
+    // Observed against the live service on 2026-08-04: MusicBrainz answers an
+    // unknown *or* malformed MBID with 400 and {"error":"Invalid mbid."}, not
+    // with 404. Classifying that as `unavailable` would have told users the
+    // service was down when the artist simply does not exist.
+    if (response.status === 400 || response.status === 404) {
+      const body: unknown = await response.json().catch(() => null);
+      const detail = errorBodySchema.safeParse(body);
+      const isUnknownIdentifier =
+        response.status === 404 ||
+        (detail.success && /invalid mbid/i.test(detail.data.error));
+
       throw new MusicBrainzError(
-        "not-found",
-        "MusicBrainz has no record with that identifier.",
-        404,
+        isUnknownIdentifier ? "not-found" : "invalid-request",
+        isUnknownIdentifier
+          ? "MusicBrainz has no record with that identifier."
+          : "MusicBrainz rejected the request.",
+        { status: response.status },
       );
     }
+
+    const retryAfterSeconds = parseRetryAfter(response);
 
     logger.warn({
       event: "musicbrainz.request_failed",
       operation,
       status: response.status,
       attempt,
+      retryAfterSeconds,
+      // Present on live 503s and useful for tuning the pacer.
+      rateLimitRemaining: response.headers.get("x-ratelimit-remaining"),
     });
 
-    // 503 is how MusicBrainz signals rate limiting, so it is retryable; the
-    // pacer already spaces the retry by a full second.
+    // 503 is how MusicBrainz signals rate limiting, and live responses carry
+    // Retry-After. Honour it rather than relying on the pacer's fixed second.
     if (
       (response.status === 503 || response.status >= 500) &&
       attempt < MAX_ATTEMPTS
     ) {
+      if (retryAfterSeconds !== undefined && retryAfterSeconds > 0) {
+        await sleep(Math.min(retryAfterSeconds, MAX_RETRY_WAIT_SECONDS) * 1000);
+      }
       continue;
     }
 
     throw new MusicBrainzError(
       response.status === 503 ? "rate-limited" : "unavailable",
       "MusicBrainz refused the request.",
-      response.status,
+      { status: response.status, retryAfterSeconds },
     );
   }
 
@@ -190,13 +245,40 @@ const artistSearchSchema = z.object({
   ),
 });
 
+const searchCache = createTtlCache<readonly ArtistSearchCandidate[]>({
+  name: "musicbrainz.search",
+  ttlMs: CACHE_TTL_MS.musicBrainzSearch,
+});
+
+const lookupCache = createTtlCache<CanonicalArtistWithDiscography>({
+  name: "musicbrainz.lookup",
+  ttlMs: CACHE_TTL_MS.musicBrainzLookup,
+});
+
+/** Test-only: drop cached provider reads between cases. */
+export function clearMusicBrainzCachesForTesting(): void {
+  searchCache.clear();
+  lookupCache.clear();
+}
+
 export async function searchArtists(
   query: string,
   options: { readonly limit?: number } = {},
 ): Promise<readonly ArtistSearchCandidate[]> {
+  const limit = Math.min(Math.max(options.limit ?? 10, 1), 25);
+
+  return searchCache.read(`${limit}:${query}`, () =>
+    searchArtistsUncached(query, limit),
+  );
+}
+
+async function searchArtistsUncached(
+  query: string,
+  limit: number,
+): Promise<readonly ArtistSearchCandidate[]> {
   const parameters = new URLSearchParams({
     query,
-    limit: String(Math.min(Math.max(options.limit ?? 10, 1), 25)),
+    limit: String(limit),
     fmt: "json",
   });
 
@@ -239,6 +321,8 @@ const artistLookupSchema = z.object({
       }),
     )
     .optional(),
+  genres: namedTagSchema,
+  tags: namedTagSchema,
   "release-groups": z
     .array(
       z.object({
@@ -248,6 +332,8 @@ const artistLookupSchema = z.object({
         "secondary-types": z.array(z.string()).optional(),
         "first-release-date": z.string().nullable().optional(),
         disambiguation: z.string().optional(),
+        genres: namedTagSchema,
+        tags: namedTagSchema,
       }),
     )
     .optional(),
@@ -261,8 +347,16 @@ export interface CanonicalArtistWithDiscography {
 export async function lookupArtist(
   mbid: string,
 ): Promise<CanonicalArtistWithDiscography> {
+  return lookupCache.read(mbid, () => lookupArtistUncached(mbid));
+}
+
+async function lookupArtistUncached(
+  mbid: string,
+): Promise<CanonicalArtistWithDiscography> {
   const parameters = new URLSearchParams({
-    inc: "aliases release-groups",
+    // Genres and tags are requested because they are the only tag-shaped data
+    // available after the move off Last.fm. See the Phase 7 scope note.
+    inc: "aliases release-groups genres tags",
     fmt: "json",
   });
 
@@ -295,6 +389,8 @@ export async function lookupArtist(
         locale: alias.locale ?? null,
         primary: alias.primary === true,
       })),
+      genres: toNames(data.genres),
+      tags: toNames(data.tags),
       attribution: attribution(data.id),
     },
     releases: (data["release-groups"] ?? []).map((group) => ({
@@ -304,6 +400,8 @@ export async function lookupArtist(
       secondaryTypes: group["secondary-types"] ?? [],
       firstReleaseDate: parsePartialDate(group["first-release-date"]),
       disambiguation: group.disambiguation || null,
+      genres: toNames(group.genres),
+      tags: toNames(group.tags),
       attribution: releaseAttribution(group.id),
     })),
   };
