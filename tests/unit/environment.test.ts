@@ -19,7 +19,8 @@ const validEnvironment = {
   SPOTIFY_TOKEN_ENCRYPTION_KEY_VERSION: "1",
   MUSICBRAINZ_APP_NAME: "CrateCompass",
   MUSICBRAINZ_APP_VERSION: "0.1.0",
-  DISCOVERY_PROVIDER: "lastfm",
+  MUSICBRAINZ_CONTACT: "maintainer@cratecompass.invalid",
+  DISCOVERY_PROVIDER: "listenbrainz",
   AI_PROVIDER: "openai",
 };
 
@@ -49,10 +50,10 @@ describe("environment validation", () => {
   it("treats blank optional secrets as absent", () => {
     const result = validateServerEnvironment({
       ...validEnvironment,
-      LASTFM_API_KEY: "",
+      LISTENBRAINZ_USER_TOKEN: "",
     });
 
-    expect(result.LASTFM_API_KEY).toBeUndefined();
+    expect(result.LISTENBRAINZ_USER_TOKEN).toBeUndefined();
   });
 });
 
