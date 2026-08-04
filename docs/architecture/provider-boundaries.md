@@ -24,8 +24,8 @@ This document defines what each external provider may supply, what CrateCompass 
 | Application identity | Supabase Auth | User ID and application profile | No auth/session data | Spotify is not an identity provider for CrateCompass |
 | Canonical artist identity | MusicBrainz | MBID, name, aliases needed for matching | Yes, bounded normalized context | Preserve MusicBrainz source reference |
 | Discography facts | MusicBrainz | Normalized release references as needed | Yes, bounded retrieved context | AI must answer only from supplied facts |
-| Similar artists | Last.fm MVP | Bounded IDs, names, scores, tags, attribution, retrieval time if terms permit | Only after terms review | No raw payloads |
-| Mood/tag candidates | Last.fm MVP | Bounded normalized evidence if terms permit | Only after terms review | User text may always enter AI with consent/notice |
+| Similar artists | ListenBrainz (ADR 0003) | Bounded MBIDs, names, scores, attribution, retrieval time | Yes — CC0 listen data carries no sub-licensing bar | No raw payloads |
+| Mood/tag candidates | ListenBrainz (ADR 0003) | Bounded normalized evidence | Yes | ListenBrainz has no direct tag-to-artist equivalent; Phase 7 scope narrows accordingly |
 | Spotify identity and links | Spotify | Stable account ID; operational resource IDs/URIs | Never | Display with Spotify attribution and deep link |
 | Spotify metadata/artwork | Spotify | No permanent catalog mirror; no downloaded artwork | Never | Fetch/display under current policy and caching rules |
 | Spotify access/refresh tokens | Spotify OAuth | Refresh token only as versioned ciphertext; ephemeral access token | Never | Server-only and redacted |
@@ -78,7 +78,11 @@ ListenBrainz remains the planned alternate because it is MBID-oriented, publishe
 | Licensing and terms | Limited terminable license, attribution/link requirements, storage/caching conditions, and prior contact requested for commercial/research use | Listen data is described as CC0; the terms and provenance of each derived API output still require review | ListenBrainz is clearer for open listen data; Last.fm is a blocking legal/terms gate before commercial or AI use |
 | Mapping to Spotify | Artist/track names are directly usable in search and results may include MBIDs | MBIDs provide strong canonical joins but may require an extra MusicBrainz lookup to obtain search names/credits | Last.fm is simpler for the initial resolver; neither may bypass confidence thresholds |
 
-Decision: use Last.fm for the private-pilot MVP only after the Phase 4 terms gate. Keep the provider port free of Last.fm-specific response types so ListenBrainz can replace it without changing product services. Do not claim comparative uptime without measured production evidence.
+**Decision superseded.** The Phase 4 terms gate ran on 2026-08-04 and selected **ListenBrainz**, not Last.fm. See [ADR 0003](adr/0003-discovery-provider-selection.md) for the Last.fm terms findings — principally the prohibition on sub-licensing Last.fm Data to a third party, which makes transmitting similarity evidence to an AI provider legally ambiguous — and for the Labs dataset-hoster stability caveat that came with the ListenBrainz choice.
+
+The comparison table above is retained as the Phase 0 record. Two of its judgements did not survive contact with the terms and the live endpoints: Last.fm's "more direct anonymous seed-artist fit" was outweighed by its licensing constraints, and ListenBrainz's similar-artist data proved **MBID-native**, which makes cross-provider matching simpler rather than harder as the table assumed.
+
+Keep the provider port free of provider-specific response types so the source can be replaced without changing product services. Do not claim comparative uptime without measured production evidence.
 
 ### Spotify
 
