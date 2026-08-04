@@ -55,7 +55,9 @@ export const serverEnvironmentSchema = z
     // asserts no module reads the Last.fm key.
     LISTENBRAINZ_USER_TOKEN: optionalSecret,
     LISTENBRAINZ_SIMILARITY_ALGORITHM: optionalSecret,
-    AI_PROVIDER: z.enum(["openai", "anthropic", "openrouter"]),
+    AI_PROVIDER: z.enum(["openai", "anthropic", "openrouter", "gemini"]),
+    GEMINI_API_KEY: optionalSecret,
+    GEMINI_MODEL: optionalSecret,
     OPENAI_API_KEY: optionalSecret,
     OPENAI_MODEL: optionalSecret,
     ANTHROPIC_API_KEY: optionalSecret,
@@ -115,6 +117,10 @@ export const serverEnvironmentSchema = z
       openrouter: [
         ["OPENROUTER_API_KEY", environment.OPENROUTER_API_KEY],
         ["OPENROUTER_MODEL", environment.OPENROUTER_MODEL],
+      ],
+      gemini: [
+        ["GEMINI_API_KEY", environment.GEMINI_API_KEY],
+        ["GEMINI_MODEL", environment.GEMINI_MODEL],
       ],
     } as const satisfies Record<
       typeof environment.AI_PROVIDER,
