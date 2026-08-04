@@ -64,6 +64,13 @@ export interface CanonicalArtist {
   /** ISO 3166 country code where MusicBrainz records one. */
   readonly country: string | null;
   readonly aliases: readonly ArtistAlias[];
+  /**
+   * Community genre and folksonomy tags, confirmed present on live lookups.
+   * These are the only tag-shaped data available after the move off Last.fm,
+   * so they are the raw material for the narrowed Phase 7 mood workflow.
+   */
+  readonly genres: readonly string[];
+  readonly tags: readonly string[];
   readonly attribution: SourceAttribution;
 }
 
@@ -129,6 +136,8 @@ export interface DiscographyRelease {
   readonly secondaryTypes: readonly string[];
   readonly firstReleaseDate: PartialDate;
   readonly disambiguation: string | null;
+  readonly genres: readonly string[];
+  readonly tags: readonly string[];
   readonly attribution: SourceAttribution;
 }
 
