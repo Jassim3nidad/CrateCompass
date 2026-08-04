@@ -47,10 +47,14 @@ export const serverEnvironmentSchema = z
     SPOTIFY_TOKEN_ENCRYPTION_KEY_VERSION: z.coerce.number().int().positive(),
     MUSICBRAINZ_APP_NAME: z.string().min(1),
     MUSICBRAINZ_APP_VERSION: z.string().min(1),
-    MUSICBRAINZ_CONTACT: optionalSecret,
+    // Required from Phase 4 onward: MusicBrainz mandates a User-Agent carrying
+    // a way to contact the maintainer, and throttles requests without one.
+    MUSICBRAINZ_CONTACT: z.string().min(1),
     DISCOVERY_PROVIDER: z.enum(["lastfm", "listenbrainz"]),
-    LASTFM_API_KEY: optionalSecret,
+    // Documented but unused. ADR 0003 selected ListenBrainz; a compliance test
+    // asserts no module reads the Last.fm key.
     LISTENBRAINZ_USER_TOKEN: optionalSecret,
+    LISTENBRAINZ_SIMILARITY_ALGORITHM: optionalSecret,
     AI_PROVIDER: z.enum(["openai", "anthropic"]),
     OPENAI_API_KEY: optionalSecret,
     OPENAI_MODEL: optionalSecret,
