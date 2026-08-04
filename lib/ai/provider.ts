@@ -16,7 +16,7 @@ import type {
  * first and enforced at runtime second (`lib/ai/gateway.ts`).
  */
 
-export type AiProviderName = "anthropic" | "openai" | "openrouter";
+export type AiProviderName = "anthropic" | "openai" | "openrouter" | "gemini";
 
 export type AiFailureKind =
   | "not-configured"
