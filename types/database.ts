@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -334,7 +334,91 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      begin_spotify_oauth: {
+        Args: {
+          p_code_verifier_ciphertext: string;
+          p_code_verifier_nonce: string;
+          p_encryption_key_version: number;
+          p_expires_at: string;
+          p_redirect_path: string;
+          p_state_digest: string;
+          p_transaction_id: string;
+          p_user_id: string;
+        };
+        Returns: undefined;
+      };
+      claim_spotify_connection: {
+        Args: {
+          p_connection_id: string;
+          p_display_name: string;
+          p_scopes: string[];
+          p_spotify_user_id: string;
+          p_user_id: string;
+        };
+        Returns: string;
+      };
+      consume_spotify_oauth: {
+        Args: { p_state_digest: string };
+        Returns: {
+          code_verifier_ciphertext: string;
+          code_verifier_nonce: string;
+          encryption_key_version: number;
+          redirect_path: string;
+          transaction_id: string;
+          user_id: string;
+        }[];
+      };
+      disconnect_spotify: { Args: { p_user_id: string }; Returns: boolean };
+      mark_spotify_connection_expired: {
+        Args: { p_user_id: string };
+        Returns: undefined;
+      };
+      purge_expired_spotify_oauth_transactions: {
+        Args: never;
+        Returns: number;
+      };
+      read_spotify_credentials: {
+        Args: { p_user_id: string };
+        Returns: {
+          access_token_ciphertext: string;
+          access_token_nonce: string;
+          connection_id: string;
+          encryption_key_version: number;
+          refresh_token_ciphertext: string;
+          refresh_token_nonce: string;
+          scopes: string[];
+          spotify_user_id: string;
+          status: string;
+          token_expires_at: string;
+        }[];
+      };
+      rotate_spotify_credentials: {
+        Args: {
+          p_access_token_ciphertext: string;
+          p_access_token_nonce: string;
+          p_connection_id: string;
+          p_encryption_key_version: number;
+          p_expected_token_expires_at: string;
+          p_refresh_token_ciphertext: string;
+          p_refresh_token_nonce: string;
+          p_token_expires_at: string;
+          p_user_id: string;
+        };
+        Returns: boolean;
+      };
+      store_spotify_credentials: {
+        Args: {
+          p_access_token_ciphertext: string;
+          p_access_token_nonce: string;
+          p_connection_id: string;
+          p_encryption_key_version: number;
+          p_refresh_token_ciphertext: string;
+          p_refresh_token_nonce: string;
+          p_token_expires_at: string;
+          p_user_id: string;
+        };
+        Returns: undefined;
+      };
     };
     Enums: {
       [_ in never]: never;
