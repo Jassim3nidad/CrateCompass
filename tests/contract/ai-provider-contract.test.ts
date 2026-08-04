@@ -87,6 +87,8 @@ const { createOpenAiProvider, resetOpenAiClientForTesting } =
   await import("@/lib/ai/adapters/openai");
 const { createOpenRouterProvider, resetOpenRouterClientForTesting } =
   await import("@/lib/ai/adapters/openrouter");
+const { createGeminiProvider, resetGeminiClientForTesting } =
+  await import("@/lib/ai/adapters/gemini");
 
 interface Harness {
   readonly label: string;
@@ -186,6 +188,41 @@ const harnesses: readonly Harness[] = [
     timeoutError: () => new StubOpenAiTimeoutError("timed out"),
     rateLimitError: () => new StubOpenAiRateLimitError("slow down"),
   },
+  {
+    // Gemini rides the same OpenAI-compatible chat.completions surface as
+    // OpenRouter, so it shares the stub — only the base URL differs in
+    // production.
+    label: "gemini",
+    create: createGeminiProvider,
+    call: openRouterParse,
+    succeedWith: (parsed) =>
+      openRouterParse.mockResolvedValue({
+        choices: [
+          { message: { parsed, refusal: null }, finish_reason: "stop" },
+        ],
+        usage: { prompt_tokens: 10, completion_tokens: 20 },
+      }),
+    refuse: () =>
+      openRouterParse.mockResolvedValue({
+        choices: [
+          {
+            message: { parsed: null, refusal: "I can't help with that." },
+            finish_reason: "stop",
+          },
+        ],
+        usage: { prompt_tokens: 5, completion_tokens: 0 },
+      }),
+    returnUnparseable: () =>
+      openRouterParse.mockResolvedValue({
+        choices: [
+          { message: { parsed: null, refusal: null }, finish_reason: "stop" },
+        ],
+        usage: { prompt_tokens: 10, completion_tokens: 20 },
+      }),
+    failWith: (error) => openRouterParse.mockRejectedValue(error),
+    timeoutError: () => new StubOpenAiTimeoutError("timed out"),
+    rateLimitError: () => new StubOpenAiRateLimitError("slow down"),
+  },
 ];
 
 beforeEach(() => {
@@ -193,6 +230,7 @@ beforeEach(() => {
   resetAnthropicClientForTesting();
   resetOpenAiClientForTesting();
   resetOpenRouterClientForTesting();
+  resetGeminiClientForTesting();
 });
 
 afterEach(() => {
