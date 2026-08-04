@@ -9,21 +9,17 @@ import type {
  *
  * Product services depend on this interface, never on ListenBrainz directly,
  * so replacing the source is an adapter change (ADR 0003).
- *
- * Phase 0 sketched three methods. Only `findSimilarArtists` is required here:
- * ListenBrainz has no direct equivalent of Last.fm's tag-to-artist and
- * tag-to-track methods, and declaring methods that always throw would hide
- * that gap behind an interface that looks complete. The tag methods are
- * optional so a future provider can supply them and callers can feature-detect
- * rather than discover the gap at runtime.
  */
 
 export type DiscoveryFailureKind =
   | "not-configured"
   | "not-found"
+  | "invalid-request"
   | "rate-limited"
   | "invalid-response"
-  | "unavailable";
+  | "unavailable"
+  /** The selected provider cannot perform this operation at all. */
+  | "unsupported";
 
 export class DiscoveryProviderError extends Error {
   readonly kind: DiscoveryFailureKind;
@@ -41,19 +37,42 @@ export class DiscoveryProviderError extends Error {
   }
 }
 
+export class UnsupportedDiscoveryOperationError extends DiscoveryProviderError {
+  constructor(operation: string, provider: string) {
+    super(
+      "unsupported",
+      `${operation} is not supported by the ${provider} discovery provider.`,
+    );
+    this.name = "UnsupportedDiscoveryOperationError";
+  }
+}
+
 export interface SimilarArtistsInput {
   readonly mbid: MusicBrainzId;
   readonly limit?: number;
 }
 
+export interface TagQueryInput {
+  readonly tags: readonly string[];
+  readonly limit?: number;
+}
+
+/**
+ * All three methods are **required**, including the two ListenBrainz cannot
+ * serve.
+ *
+ * They were previously optional, which was a mistake: an absent optional method
+ * either returns `undefined` through `?.()` or throws a bare `TypeError`, and
+ * in the first case a caller cannot tell "this provider has no tag search" from
+ * "tag search found nothing". Declaring them and throwing
+ * `UnsupportedDiscoveryOperationError` makes the gap explicit at the call site
+ * and impossible to mistake for zero results.
+ */
 export interface DiscoveryProvider {
   readonly name: Provenance;
   findSimilarArtists(input: SimilarArtistsInput): Promise<SimilarityEvidence>;
-  /** Not available from ListenBrainz. See ADR 0003 and Phase 7 scope. */
-  findArtistsByTags?(input: {
-    readonly tags: readonly string[];
-  }): Promise<never>;
-  findTracksByTags?(input: {
-    readonly tags: readonly string[];
-  }): Promise<never>;
+  /** Unsupported on ListenBrainz. See docs/product/phase-7-mood-scope.md. */
+  findArtistsByTags(input: TagQueryInput): Promise<never>;
+  /** Unsupported on ListenBrainz. See docs/product/phase-7-mood-scope.md. */
+  findTracksByTags(input: TagQueryInput): Promise<never>;
 }
