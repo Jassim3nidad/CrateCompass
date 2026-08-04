@@ -5,6 +5,20 @@ const optionalSecret = z.preprocess(
   z.string().min(1).optional(),
 );
 
+const ENCRYPTION_KEY_BYTE_LENGTH = 32;
+
+/**
+ * Base64 decoding is lenient, so the round-trip comparison is what rejects
+ * malformed keys rather than silently accepting a truncated one.
+ */
+function isEncryptionKeyWellFormed(value: string): boolean {
+  const decoded = Buffer.from(value, "base64");
+  return (
+    decoded.byteLength === ENCRYPTION_KEY_BYTE_LENGTH &&
+    decoded.toString("base64") === value
+  );
+}
+
 export const serverEnvironmentSchema = z
   .object({
     NODE_ENV: z.enum(["development", "test", "production"]),
@@ -22,7 +36,9 @@ export const serverEnvironmentSchema = z
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: optionalSecret,
     SUPABASE_SERVICE_ROLE_KEY: optionalSecret,
     SPOTIFY_CLIENT_ID: optionalSecret,
-    SPOTIFY_CLIENT_SECRET: optionalSecret,
+    // The Spotify client secret is deliberately not modelled here. ADR 0002
+    // selects the PKCE flow, under which no application code reads it, and a
+    // compliance test asserts that no module names that variable at all.
     SPOTIFY_REDIRECT_URI: z.preprocess(
       (value) => (value === "" ? undefined : value),
       z.url().optional(),
@@ -43,7 +59,40 @@ export const serverEnvironmentSchema = z
     RATE_LIMIT_STORE_URL: optionalSecret,
     RATE_LIMIT_STORE_TOKEN: optionalSecret,
   })
-  .passthrough();
+  .passthrough()
+  .superRefine((environment, context) => {
+    // The client secret is deliberately absent from this check: ADR 0002
+    // selects the PKCE flow, under which no application code reads it.
+    if (!environment.SPOTIFY_CLIENT_ID) {
+      return;
+    }
+
+    if (!environment.SPOTIFY_TOKEN_ENCRYPTION_KEY) {
+      context.addIssue({
+        code: "custom",
+        path: ["SPOTIFY_TOKEN_ENCRYPTION_KEY"],
+        message:
+          "is required whenever SPOTIFY_CLIENT_ID is set, because connected-account credentials cannot be stored without it",
+      });
+      return;
+    }
+
+    if (!isEncryptionKeyWellFormed(environment.SPOTIFY_TOKEN_ENCRYPTION_KEY)) {
+      context.addIssue({
+        code: "custom",
+        path: ["SPOTIFY_TOKEN_ENCRYPTION_KEY"],
+        message: `must be base64 decoding to exactly ${ENCRYPTION_KEY_BYTE_LENGTH} bytes`,
+      });
+    }
+
+    if (!environment.SPOTIFY_REDIRECT_URI) {
+      context.addIssue({
+        code: "custom",
+        path: ["SPOTIFY_REDIRECT_URI"],
+        message: "is required whenever SPOTIFY_CLIENT_ID is set",
+      });
+    }
+  });
 
 export type ServerEnvironment = z.infer<typeof serverEnvironmentSchema>;
 
