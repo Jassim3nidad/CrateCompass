@@ -29,6 +29,7 @@
     "db:test:linked": "supabase test db --linked supabase/tests",
     "db:types": "supabase gen types typescript --local --schema public > types/database.ts",
     "db:types:linked": "supabase gen types typescript --linked --schema public > types/database.ts",
+    "verify:spotify-privileges": "node scripts/verify-spotify-privileges.mjs",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm run test"
   },
   "dependencies": {
