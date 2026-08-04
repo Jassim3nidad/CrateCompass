@@ -4,11 +4,14 @@ import {
   AiBoundaryViolationError,
   assertAiSafe,
   isAiSafe,
-} from "@/lib/ai/input-guard";
+} from "@/lib/ai/gateway";
 
 /**
- * Phase 3 portion of the Spotify-to-AI boundary. Phase 5 replaces this with a
- * full gateway; these cases must keep passing when it does.
+ * The recursive content scan, carried over from the Phase 3 interim guard.
+ *
+ * Phase 5 replaced that guard with the full gateway. Every case here still
+ * passes against the new implementation — that was the point of keeping them.
+ * Schema and provenance enforcement are covered in ai-gateway.test.ts.
  */
 
 const acceptableInput = {
