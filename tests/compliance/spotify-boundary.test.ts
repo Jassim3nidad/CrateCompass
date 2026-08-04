@@ -87,6 +87,17 @@ describe("repository scan", () => {
     expect(offenders).toEqual([]);
   });
 
+  it("reads the Last.fm API key nowhere, because ADR 0003 selected ListenBrainz", () => {
+    const offenders = sources
+      .filter((source) => source.contents.includes("LASTFM_API_KEY"))
+      .map((source) => source.path);
+
+    // Last.fm is unimplemented on purpose: its terms prohibit sub-licensing its
+    // data to a third party, which makes sending evidence to an AI provider
+    // legally ambiguous. An accidental integration should fail here.
+    expect(offenders).toEqual([]);
+  });
+
   it("never imports a Spotify provider module from a client component", () => {
     const offenders = sources
       .filter((source) => /^\s*["']use client["']/m.test(source.contents))
