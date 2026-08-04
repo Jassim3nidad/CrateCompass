@@ -1,9 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createListenBrainzProvider } from "@/lib/providers/discovery/listenbrainz";
+import {
+  clearSimilarityCacheForTesting,
+  createListenBrainzProvider,
+} from "@/lib/providers/discovery/listenbrainz";
 import { DiscoveryProviderError } from "@/lib/providers/discovery/port";
 import {
   buildUserAgent,
+  clearMusicBrainzCachesForTesting,
   lookupArtist,
   MusicBrainzError,
   parsePartialDate,
@@ -30,6 +34,10 @@ function jsonResponse(
 
 beforeEach(() => {
   resetPacerForTesting();
+  // Provider reads are cached, so cases that reuse a query would otherwise
+  // share a result and never reach the stubbed fetch.
+  clearMusicBrainzCachesForTesting();
+  clearSimilarityCacheForTesting();
 });
 
 afterEach(() => {
@@ -251,27 +259,78 @@ describe("ListenBrainz similar artists", () => {
     expect(evidence.algorithm).toContain("session_based");
   });
 
-  it("skips entries that do not match the expected shape", async () => {
+  it("fails loudly when any row is malformed, rather than skipping it", async () => {
+    // This previously skipped unparseable rows, which meant a wholly malformed
+    // response reached the caller as zero similar artists — indistinguishable
+    // from the genuine empty result the endpoint returns for an unknown MBID.
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(
-        jsonResponse([
-          { some: "metadata header" },
-          {
-            artist_mbid: "mbid-ok",
-            name: "Real",
-            score: 50,
-          },
-        ]),
-      ),
+      vi
+        .fn()
+        .mockResolvedValue(
+          jsonResponse([
+            { some: "unexpected shape" },
+            { artist_mbid: "mbid-ok", name: "Real", score: 50 },
+          ]),
+        ),
     );
+
+    await expect(
+      provider.findSimilarArtists({ mbid: asMusicBrainzId(REFERENCE_MBID) }),
+    ).rejects.toMatchObject({ kind: "invalid-response" });
+  });
+
+  it("distinguishes a malformed response from a genuinely empty one", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse([])));
 
     const evidence = await provider.findSimilarArtists({
       mbid: asMusicBrainzId(REFERENCE_MBID),
     });
 
-    expect(evidence.candidates).toHaveLength(1);
-    expect(evidence.candidates[0]?.name).toBe("Real");
+    // An unknown MBID really does return 200 with [], so empty is a valid
+    // answer and must not be conflated with a schema failure.
+    expect(evidence.candidates).toEqual([]);
+  });
+
+  it("reports an unknown algorithm as invalid-request, not as an outage", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response("<!doctype html><title>400 Bad Request</title>", {
+          status: 400,
+          headers: { "Content-Type": "text/html" },
+        }),
+      ),
+    );
+
+    await expect(
+      provider.findSimilarArtists({ mbid: asMusicBrainzId(REFERENCE_MBID) }),
+    ).rejects.toMatchObject({ kind: "invalid-request" });
+  });
+
+  it("retries once on a transient failure, then fails", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({}, 502))
+      .mockResolvedValueOnce(jsonResponse([]));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const evidence = await provider.findSimilarArtists({
+      mbid: asMusicBrainzId(REFERENCE_MBID),
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(evidence.candidates).toEqual([]);
+  });
+
+  it("gives up after the single retry", async () => {
+    const fetchMock = vi.fn().mockImplementation(() => jsonResponse({}, 502));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      provider.findSimilarArtists({ mbid: asMusicBrainzId(REFERENCE_MBID) }),
+    ).rejects.toMatchObject({ kind: "unavailable" });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("honours the rate-limit reset header on 429", async () => {
@@ -289,7 +348,7 @@ describe("ListenBrainz similar artists", () => {
     ).rejects.toMatchObject({ kind: "rate-limited", retryAfterSeconds: 17 });
   });
 
-  it("degrades rather than propagating a malformed payload", async () => {
+  it("rejects a non-array payload as invalid-response", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(jsonResponse({ not: "an array" })),
@@ -298,6 +357,15 @@ describe("ListenBrainz similar artists", () => {
     await expect(
       provider.findSimilarArtists({ mbid: asMusicBrainzId(REFERENCE_MBID) }),
     ).rejects.toBeInstanceOf(DiscoveryProviderError);
+  });
+
+  it("reports tag search as unsupported rather than returning nothing", async () => {
+    await expect(
+      provider.findArtistsByTags({ tags: ["trip hop"] }),
+    ).rejects.toMatchObject({ kind: "unsupported" });
+    await expect(
+      provider.findTracksByTags({ tags: ["trip hop"] }),
+    ).rejects.toMatchObject({ kind: "unsupported" });
   });
 
   it("sends no Authorization header when no token is configured", async () => {
