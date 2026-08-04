@@ -105,6 +105,59 @@ describe("forbidden values", () => {
   });
 });
 
+describe("provenance enforcement", () => {
+  it("accepts evidence from sources whose terms permit AI processing", () => {
+    for (const provenance of [
+      "musicbrainz",
+      "listenbrainz",
+      "user",
+      "application",
+    ]) {
+      expect(isAiSafe({ fact: "x", provenance })).toBe(true);
+    }
+  });
+
+  it("rejects Spotify-derived evidence on provenance alone", () => {
+    // No Spotify key, URI, or host appears anywhere: provenance is the only
+    // signal, and it must be enough.
+    const evidence = { artistName: "Example Artist", provenance: "spotify" };
+
+    try {
+      assertAiSafe(evidence);
+      expect.unreachable("Spotify provenance should have been rejected");
+    } catch (error) {
+      expect((error as AiBoundaryViolationError).reason).toBe(
+        "unapproved-provenance",
+      );
+    }
+  });
+
+  it("rejects an unknown provenance rather than defaulting to allowed", () => {
+    expect(isAiSafe({ fact: "x", provenance: "some-new-provider" })).toBe(
+      false,
+    );
+  });
+
+  it("finds unapproved provenance nested inside a candidate list", () => {
+    const payload = {
+      criteria: { mood: "late night" },
+      candidates: [
+        { name: "Approved", provenance: "listenbrainz" },
+        { name: "Leaked", provenance: "spotify" },
+      ],
+    };
+
+    try {
+      assertAiSafe(payload);
+      expect.unreachable("nested Spotify provenance should have been rejected");
+    } catch (error) {
+      expect((error as AiBoundaryViolationError).path).toBe(
+        "candidates[1].provenance",
+      );
+    }
+  });
+});
+
 describe("input limits", () => {
   it("rejects oversized input", () => {
     expect(() => assertAiSafe({ mood: "a".repeat(60_001) })).toThrow(
