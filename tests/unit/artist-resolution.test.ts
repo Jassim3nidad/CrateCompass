@@ -24,6 +24,8 @@ function canonical(
       locale: null,
       primary: false,
     })),
+    genres: [],
+    tags: [],
     attribution: {
       provenance: "musicbrainz",
       sourceUrl: null,
