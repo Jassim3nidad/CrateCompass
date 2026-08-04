@@ -1,5 +1,6 @@
 import { ShieldCheck, UserRound } from "lucide-react";
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { PageHeader } from "@/components/layout/page-header";
 import {
@@ -77,9 +78,21 @@ export default async function SettingsPage({
             />
             <ProviderStatus
               name="Spotify"
-              status={spotifyConnection ? "available" : "not-configured"}
-              description="Optional connected account arrives in Phase 3."
+              status={
+                spotifyConnection?.status === "active"
+                  ? "available"
+                  : spotifyConnection
+                    ? "degraded"
+                    : "not-configured"
+              }
+              description="Optional connected account. Manage it under Connections."
             />
+            <Link
+              href="/settings/connections"
+              className="inline-flex min-h-11 items-center text-sm font-semibold text-[var(--accent-soft)] underline underline-offset-4"
+            >
+              Manage Spotify connection
+            </Link>
             <ProviderStatus
               name="MusicBrainz"
               status="not-configured"
