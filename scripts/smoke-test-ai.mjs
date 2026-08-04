@@ -17,31 +17,51 @@ import { zodResponseFormat } from "openai/helpers/zod";
 const { loadEnvConfig } = nextEnv;
 loadEnvConfig(process.cwd());
 
+// Both OpenAI-compatible providers share one code path; only the base URL and
+// credential names differ.
+const COMPATIBLE_PROVIDERS = {
+  openrouter: {
+    baseURL: "https://openrouter.ai/api/v1",
+    keyVar: "OPENROUTER_API_KEY",
+    modelVar: "OPENROUTER_MODEL",
+    headers: {
+      "HTTP-Referer":
+        process.env.NEXT_PUBLIC_APP_URL ?? "http://127.0.0.1:3000",
+      "X-Title": "CrateCompass",
+    },
+  },
+  gemini: {
+    baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
+    keyVar: "GEMINI_API_KEY",
+    modelVar: "GEMINI_MODEL",
+    headers: {},
+  },
+};
+
 const provider = process.env.AI_PROVIDER;
-if (provider !== "openrouter") {
+const config = COMPATIBLE_PROVIDERS[provider];
+
+if (!config) {
   console.error(
-    `This smoke test covers openrouter; AI_PROVIDER is "${provider}".`,
+    `This smoke test covers ${Object.keys(COMPATIBLE_PROVIDERS).join(" and ")}; AI_PROVIDER is "${provider}".`,
   );
   process.exit(1);
 }
 
-const apiKey = process.env.OPENROUTER_API_KEY;
-const model = process.env.OPENROUTER_MODEL;
+const apiKey = process.env[config.keyVar];
+const model = process.env[config.modelVar];
 
 if (!apiKey || !model) {
-  console.error("OPENROUTER_API_KEY and OPENROUTER_MODEL must both be set.");
+  console.error(`${config.keyVar} and ${config.modelVar} must both be set.`);
   process.exit(1);
 }
 
 const client = new OpenAI({
   apiKey,
-  baseURL: "https://openrouter.ai/api/v1",
+  baseURL: config.baseURL,
   timeout: 30_000,
   maxRetries: 1,
-  defaultHeaders: {
-    "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL ?? "http://127.0.0.1:3000",
-    "X-Title": "CrateCompass",
-  },
+  defaultHeaders: config.headers,
 });
 
 // A trimmed mood schema — enough to prove schema adherence without depending on
@@ -53,6 +73,7 @@ const schema = z.object({
   clarificationNeeded: z.boolean(),
 });
 
+console.log(`Provider: ${provider}`);
 console.log(`Model: ${model}`);
 console.log("Sending one structured-output request...\n");
 
