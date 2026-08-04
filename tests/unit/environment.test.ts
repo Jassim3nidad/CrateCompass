@@ -21,7 +21,9 @@ const validEnvironment = {
   MUSICBRAINZ_APP_VERSION: "0.1.0",
   MUSICBRAINZ_CONTACT: "maintainer@cratecompass.invalid",
   DISCOVERY_PROVIDER: "listenbrainz",
-  AI_PROVIDER: "openai",
+  AI_PROVIDER: "anthropic",
+  ANTHROPIC_API_KEY: "sk-ant-synthetic",
+  ANTHROPIC_MODEL: "claude-opus-5",
 };
 
 describe("environment validation", () => {
@@ -54,6 +56,68 @@ describe("environment validation", () => {
     });
 
     expect(result.LISTENBRAINZ_USER_TOKEN).toBeUndefined();
+  });
+});
+
+describe("AI provider environment", () => {
+  it("requires only the selected provider's credentials", () => {
+    // Requiring both providers' keys would make switching AI_PROVIDER a
+    // deployment change rather than a configuration one.
+    expect(() => validateServerEnvironment(validEnvironment)).not.toThrow();
+  });
+
+  it("rejects a selected provider with no key", () => {
+    expect(() =>
+      validateServerEnvironment({
+        ...validEnvironment,
+        ANTHROPIC_API_KEY: undefined,
+      }),
+    ).toThrow(/ANTHROPIC_API_KEY.*AI_PROVIDER is "anthropic"/i);
+  });
+
+  it("rejects a selected provider with no model", () => {
+    expect(() =>
+      validateServerEnvironment({
+        ...validEnvironment,
+        ANTHROPIC_MODEL: undefined,
+      }),
+    ).toThrow(/ANTHROPIC_MODEL.*AI_PROVIDER is "anthropic"/i);
+  });
+
+  it("requires OpenRouter credentials when it is selected", () => {
+    expect(() =>
+      validateServerEnvironment({
+        ...validEnvironment,
+        AI_PROVIDER: "openrouter",
+      }),
+    ).toThrow(/OPENROUTER_API_KEY.*AI_PROVIDER is "openrouter"/i);
+
+    expect(() =>
+      validateServerEnvironment({
+        ...validEnvironment,
+        AI_PROVIDER: "openrouter",
+        OPENROUTER_API_KEY: "sk-or-v1-synthetic",
+        OPENROUTER_MODEL: "google/gemini-3.1-flash-lite",
+      }),
+    ).not.toThrow();
+  });
+
+  it("switches which credentials are required when the provider changes", () => {
+    expect(() =>
+      validateServerEnvironment({
+        ...validEnvironment,
+        AI_PROVIDER: "openai",
+      }),
+    ).toThrow(/OPENAI_API_KEY.*AI_PROVIDER is "openai"/i);
+
+    expect(() =>
+      validateServerEnvironment({
+        ...validEnvironment,
+        AI_PROVIDER: "openai",
+        OPENAI_API_KEY: "sk-synthetic",
+        OPENAI_MODEL: "gpt-synthetic",
+      }),
+    ).not.toThrow();
   });
 });
 
