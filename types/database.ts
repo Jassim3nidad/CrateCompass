@@ -347,6 +347,16 @@ export type Database = {
         };
         Returns: undefined;
       };
+      claim_ai_usage: {
+        Args: {
+          p_daily_limit: number;
+          p_operation: string;
+          p_per_minute_limit: number;
+          p_provider: string;
+          p_user_id: string;
+        };
+        Returns: boolean;
+      };
       claim_spotify_connection: {
         Args: {
           p_connection_id: string;
@@ -373,6 +383,7 @@ export type Database = {
         Args: { p_user_id: string };
         Returns: undefined;
       };
+      purge_ai_usage_events: { Args: never; Returns: number };
       purge_expired_spotify_oauth_transactions: {
         Args: never;
         Returns: number;
