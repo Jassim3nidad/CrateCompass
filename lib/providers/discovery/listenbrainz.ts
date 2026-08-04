@@ -4,8 +4,10 @@ import { z } from "zod";
 
 import { getServerEnvironment } from "@/lib/env";
 import { logger } from "@/lib/observability/logger";
+import { CACHE_TTL_MS, createTtlCache } from "@/lib/providers/cache";
 import {
   DiscoveryProviderError,
+  UnsupportedDiscoveryOperationError,
   type DiscoveryProvider,
   type SimilarArtistsInput,
 } from "@/lib/providers/discovery/port";
@@ -18,24 +20,47 @@ import {
 /**
  * ListenBrainz similar-artists adapter.
  *
- * Similar artists come from the Labs dataset hoster rather than the core
- * ListenBrainz API. That host offers a weaker stability guarantee and takes an
- * opaque algorithm tuning string, so the algorithm is environment-configurable
- * and the response is strictly validated: an unrecognised shape degrades to
- * "no similarity data" rather than propagating malformed evidence into the
- * product. See ADR 0003.
+ * ## Stability warning
  *
- * Results are MBID-native, which is why downstream matching against the
- * canonical artist is an identifier comparison rather than a fuzzy name join.
+ * This calls `labs.api.listenbrainz.org`, the MetaBrainz **dataset hoster** —
+ * a research surface, not the core ListenBrainz API. It carries **no stability
+ * guarantee**: it is not covered by the core API docs, its parameters are
+ * documented only through a web interface, and the `algorithm` parameter is an
+ * opaque tuning string drawn from a server-side enumeration that can change
+ * without notice. It is the single point of failure for similar-artist
+ * discovery (ADR 0003).
+ *
+ * ## Observed behaviour (verified live 2026-08-04)
+ *
+ * - Success is a bare JSON array of rows; 100 rows for a well-known artist.
+ * - An unknown MBID returns **200 with `[]`** — not an error.
+ * - Errors return **HTML, not JSON**, so error bodies are never JSON-parsed.
+ * - An unknown `algorithm` returns **400**. That is the upstream-change signal.
+ * - **No rate-limit headers are sent**, unlike the core ListenBrainz API.
+ *
+ * ## Fallback behaviour
+ *
+ * Every failure raises a typed `DiscoveryProviderError` and is logged. Nothing
+ * degrades to an empty candidate list, because an empty list is a real and
+ * distinct answer here. Callers are expected to keep canonical identity and
+ * discography working when this throws — a Labs outage must not take down the
+ * artist page.
  */
 
 const LABS_ORIGIN = "https://labs.api.listenbrainz.org";
-const REQUEST_TIMEOUT_MS = 10_000;
+const REQUEST_TIMEOUT_MS = 8_000;
+/** One retry, then fail. A slow research endpoint must not hold a request open. */
+const MAX_ATTEMPTS = 2;
+const RETRY_DELAY_MS = 400;
 const DEFAULT_LIMIT = 25;
 
 export const DEFAULT_SIMILARITY_ALGORITHM =
   "session_based_days_7500_session_300_contribution_5_threshold_10_limit_100_filter_True_skip_30";
 
+/**
+ * Matches the live row shape exactly. `comment`, `type` and `gender` are
+ * nullable in real responses; `score` is a large unnormalised integer.
+ */
 const similarArtistSchema = z.object({
   artist_mbid: z.string().min(1),
   name: z.string().min(1),
@@ -46,147 +71,248 @@ const similarArtistSchema = z.object({
   reference_mbid: z.string().nullable().optional(),
 });
 
-// The endpoint returns a bare array. Some dataset-hoster endpoints wrap results
-// in a leading metadata element, so both shapes are accepted and anything else
-// is rejected.
-const similarArtistsResponseSchema = z.union([
-  z.array(similarArtistSchema),
-  z.array(z.unknown()),
-]);
+/**
+ * Strict. An earlier version accepted `z.array(z.unknown())` as a fallback and
+ * then skipped unparseable rows, which meant a wholly malformed response
+ * arrived at the caller as zero similar artists — indistinguishable from the
+ * genuine empty result the endpoint returns for an unknown MBID. Malformed
+ * input must fail loudly instead.
+ */
+const similarArtistsResponseSchema = z.array(similarArtistSchema);
+
+function sleep(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
 
 function resolveAlgorithm(): string {
   const configured = process.env.LISTENBRAINZ_SIMILARITY_ALGORITHM;
+
+  if (configured && configured !== DEFAULT_SIMILARITY_ALGORITHM) {
+    // Surfaced so a deliberate override is visible in logs, and so a support
+    // question about odd results can be traced to a non-default algorithm.
+    logger.info({
+      event: "listenbrainz.algorithm_override",
+      algorithm: configured,
+    });
+    return configured;
+  }
+
   return configured && configured.length > 0
     ? configured
     : DEFAULT_SIMILARITY_ALGORITHM;
 }
 
-function parseRetryAfter(response: Response): number | undefined {
-  const resetIn = response.headers.get("x-ratelimit-reset-in");
-  if (!resetIn) return undefined;
+const similarityCache = createTtlCache<SimilarityEvidence>({
+  name: "listenbrainz.similarity",
+  ttlMs: CACHE_TTL_MS.listenBrainzSimilarity,
+});
 
-  const seconds = Number.parseInt(resetIn, 10);
-  return Number.isFinite(seconds) && seconds >= 0 ? seconds : undefined;
+/** Test-only: drop cached similarity reads between cases. */
+export function clearSimilarityCacheForTesting(): void {
+  similarityCache.clear();
 }
 
 export function createListenBrainzProvider(): DiscoveryProvider {
   return {
     name: "listenbrainz",
 
-    async findSimilarArtists(
+    findSimilarArtists(
       input: SimilarArtistsInput,
     ): Promise<SimilarityEvidence> {
       const algorithm = resolveAlgorithm();
-      const parameters = new URLSearchParams({
-        artist_mbids: input.mbid,
-        algorithm,
-      });
+      // Keyed on everything that changes the answer, so an algorithm override
+      // cannot serve results generated by the previous one.
+      const key = `${input.mbid}:${algorithm}:${input.limit ?? DEFAULT_LIMIT}`;
 
-      const environment = getServerEnvironment();
-      const headers: Record<string, string> = { Accept: "application/json" };
+      return similarityCache.read(key, () =>
+        fetchSimilarArtists(input, algorithm),
+      );
+    },
 
-      // A token is optional for reads and may raise the rate limit.
-      if (environment.LISTENBRAINZ_USER_TOKEN) {
-        headers.Authorization = `Token ${environment.LISTENBRAINZ_USER_TOKEN}`;
-      }
+    // Declared and throwing rather than absent: a caller must not be able to
+    // mistake "this provider has no tag search" for "tag search found nothing".
+    findArtistsByTags(): Promise<never> {
+      return Promise.reject(
+        new UnsupportedDiscoveryOperationError(
+          "findArtistsByTags",
+          "listenbrainz",
+        ),
+      );
+    },
 
-      const startedAt = Date.now();
-      let response: Response;
-
-      try {
-        response = await fetch(
-          `${LABS_ORIGIN}/similar-artists/json?${parameters}`,
-          {
-            headers,
-            signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-            cache: "no-store",
-          },
-        );
-      } catch {
-        throw new DiscoveryProviderError(
-          "unavailable",
-          "The discovery provider did not respond in time.",
-        );
-      }
-
-      if (response.status === 429) {
-        const retryAfterSeconds = parseRetryAfter(response);
-        logger.warn({
-          event: "listenbrainz.rate_limited",
-          retryAfterSeconds,
-        });
-        throw new DiscoveryProviderError(
-          "rate-limited",
-          "The discovery provider is rate limiting requests.",
-          retryAfterSeconds,
-        );
-      }
-
-      if (!response.ok) {
-        logger.warn({
-          event: "listenbrainz.request_failed",
-          status: response.status,
-        });
-        throw new DiscoveryProviderError(
-          "unavailable",
-          "The discovery provider refused the request.",
-        );
-      }
-
-      const payload: unknown = await response.json().catch(() => null);
-      const parsed = similarArtistsResponseSchema.safeParse(payload);
-
-      if (!parsed.success) {
-        throw new DiscoveryProviderError(
-          "invalid-response",
-          "The discovery provider returned an unexpected response.",
-        );
-      }
-
-      const retrievedAt = new Date().toISOString();
-      const candidates: ArtistCandidate[] = [];
-
-      for (const entry of parsed.data) {
-        const candidate = similarArtistSchema.safeParse(entry);
-        // Entries that do not match are skipped rather than failing the whole
-        // result: a metadata header element must not lose the real candidates.
-        if (!candidate.success) continue;
-
-        candidates.push({
-          mbid: asMusicBrainzId(candidate.data.artist_mbid),
-          name: candidate.data.name,
-          disambiguation: candidate.data.comment || null,
-          type: candidate.data.type ?? null,
-          score: candidate.data.score,
-          attribution: {
-            provenance: "listenbrainz",
-            sourceUrl: `https://listenbrainz.org/artist/${candidate.data.artist_mbid}`,
-            retrievedAt,
-          },
-        });
-      }
-
-      candidates.sort((first, second) => second.score - first.score);
-
-      logger.info({
-        event: "listenbrainz.similar_artists",
-        durationMs: Date.now() - startedAt,
-        candidateCount: candidates.length,
-        rateLimitRemaining: response.headers.get("x-ratelimit-remaining"),
-      });
-
-      return {
-        referenceMbid: input.mbid,
-        candidates: candidates.slice(0, input.limit ?? DEFAULT_LIMIT),
-        algorithm,
-        attribution: {
-          provenance: "listenbrainz",
-          sourceUrl: `https://listenbrainz.org/artist/${input.mbid}`,
-          retrievedAt,
-        },
-      };
+    findTracksByTags(): Promise<never> {
+      return Promise.reject(
+        new UnsupportedDiscoveryOperationError(
+          "findTracksByTags",
+          "listenbrainz",
+        ),
+      );
     },
   };
+}
+
+async function fetchSimilarArtists(
+  input: SimilarArtistsInput,
+  algorithm: string,
+): Promise<SimilarityEvidence> {
+  const parameters = new URLSearchParams({
+    artist_mbids: input.mbid,
+    algorithm,
+  });
+
+  const environment = getServerEnvironment();
+  const headers: Record<string, string> = { Accept: "application/json" };
+
+  if (environment.LISTENBRAINZ_USER_TOKEN) {
+    headers.Authorization = `Token ${environment.LISTENBRAINZ_USER_TOKEN}`;
+  }
+
+  let lastError: DiscoveryProviderError | undefined;
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+    const startedAt = Date.now();
+    let response: Response;
+
+    try {
+      response = await fetch(
+        `${LABS_ORIGIN}/similar-artists/json?${parameters}`,
+        {
+          headers,
+          signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+          cache: "no-store",
+        },
+      );
+    } catch {
+      lastError = new DiscoveryProviderError(
+        "unavailable",
+        "The discovery provider did not respond in time.",
+      );
+      logger.warn({
+        event: "listenbrainz.transport_failure",
+        attempt,
+        durationMs: Date.now() - startedAt,
+      });
+
+      if (attempt < MAX_ATTEMPTS) {
+        await sleep(RETRY_DELAY_MS);
+        continue;
+      }
+      throw lastError;
+    }
+
+    // 400 means our request was wrong — almost always because the algorithm
+    // enumeration changed upstream. Retrying cannot fix it, and it needs to
+    // be visible before users report missing recommendations.
+    if (response.status === 400) {
+      logger.error({
+        event: "listenbrainz.request_rejected",
+        status: 400,
+        algorithm,
+        hint: "The Labs algorithm enumeration may have changed upstream.",
+      });
+      throw new DiscoveryProviderError(
+        "invalid-request",
+        "The discovery provider rejected the similarity request.",
+      );
+    }
+
+    if (response.status === 429) {
+      // Labs sent no rate-limit headers in any captured response, but the
+      // core ListenBrainz API does publish X-RateLimit-Reset-In. Parsing it
+      // when present costs nothing and gives a caller a real backoff hint.
+      const resetIn = response.headers.get("x-ratelimit-reset-in");
+      const seconds = resetIn ? Number.parseInt(resetIn, 10) : Number.NaN;
+
+      logger.warn({
+        event: "listenbrainz.rate_limited",
+        retryAfterSeconds: Number.isFinite(seconds) ? seconds : undefined,
+      });
+
+      throw new DiscoveryProviderError(
+        "rate-limited",
+        "The discovery provider is rate limiting requests.",
+        Number.isFinite(seconds) && seconds >= 0 ? seconds : undefined,
+      );
+    }
+
+    if (!response.ok) {
+      lastError = new DiscoveryProviderError(
+        "unavailable",
+        "The discovery provider refused the request.",
+      );
+      logger.warn({
+        event: "listenbrainz.request_failed",
+        status: response.status,
+        attempt,
+      });
+
+      if (attempt < MAX_ATTEMPTS) {
+        await sleep(RETRY_DELAY_MS);
+        continue;
+      }
+      throw lastError;
+    }
+
+    // Error bodies are HTML, so JSON parsing is only attempted on success.
+    const payload: unknown = await response.json().catch(() => null);
+    const parsed = similarArtistsResponseSchema.safeParse(payload);
+
+    if (!parsed.success) {
+      logger.error({
+        event: "listenbrainz.invalid_response",
+        algorithm,
+        issueCount: parsed.error.issues.length,
+        firstIssuePath: parsed.error.issues[0]?.path.join("."),
+        hint: "The Labs response shape has changed; the adapter needs updating.",
+      });
+      throw new DiscoveryProviderError(
+        "invalid-response",
+        "The discovery provider returned an unexpected response.",
+      );
+    }
+
+    const retrievedAt = new Date().toISOString();
+    const candidates: ArtistCandidate[] = parsed.data
+      .map((row) => ({
+        mbid: asMusicBrainzId(row.artist_mbid),
+        name: row.name,
+        disambiguation: row.comment || null,
+        type: row.type ?? null,
+        score: row.score,
+        attribution: {
+          provenance: "listenbrainz" as const,
+          sourceUrl: `https://listenbrainz.org/artist/${row.artist_mbid}`,
+          retrievedAt,
+        },
+      }))
+      .sort((first, second) => second.score - first.score);
+
+    logger.info({
+      event: "listenbrainz.similar_artists",
+      durationMs: Date.now() - startedAt,
+      candidateCount: candidates.length,
+      attempt,
+    });
+
+    return {
+      referenceMbid: input.mbid,
+      candidates: candidates.slice(0, input.limit ?? DEFAULT_LIMIT),
+      algorithm,
+      attribution: {
+        provenance: "listenbrainz",
+        sourceUrl: `https://listenbrainz.org/artist/${input.mbid}`,
+        retrievedAt,
+      },
+    };
+  }
+
+  throw (
+    lastError ??
+    new DiscoveryProviderError(
+      "unavailable",
+      "The discovery provider is unavailable.",
+    )
+  );
 }
 
 export function getDiscoveryProvider(): DiscoveryProvider {
