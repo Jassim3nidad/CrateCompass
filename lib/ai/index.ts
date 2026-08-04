@@ -2,6 +2,7 @@ import "server-only";
 
 import { createAnthropicProvider } from "@/lib/ai/adapters/anthropic";
 import { createOpenAiProvider } from "@/lib/ai/adapters/openai";
+import { createGeminiProvider } from "@/lib/ai/adapters/gemini";
 import { createOpenRouterProvider } from "@/lib/ai/adapters/openrouter";
 import {
   fallbackArtistMatchExplanation,
@@ -32,6 +33,8 @@ export function getAiProvider(): AiProvider {
   const environment = getServerEnvironment();
 
   switch (environment.AI_PROVIDER) {
+    case "gemini":
+      return createGeminiProvider();
     case "anthropic":
       return createAnthropicProvider();
     case "openrouter":
