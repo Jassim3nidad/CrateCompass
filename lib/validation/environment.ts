@@ -55,11 +55,13 @@ export const serverEnvironmentSchema = z
     // asserts no module reads the Last.fm key.
     LISTENBRAINZ_USER_TOKEN: optionalSecret,
     LISTENBRAINZ_SIMILARITY_ALGORITHM: optionalSecret,
-    AI_PROVIDER: z.enum(["openai", "anthropic"]),
+    AI_PROVIDER: z.enum(["openai", "anthropic", "openrouter"]),
     OPENAI_API_KEY: optionalSecret,
     OPENAI_MODEL: optionalSecret,
     ANTHROPIC_API_KEY: optionalSecret,
     ANTHROPIC_MODEL: optionalSecret,
+    OPENROUTER_API_KEY: optionalSecret,
+    OPENROUTER_MODEL: optionalSecret,
     RATE_LIMIT_STORE_URL: optionalSecret,
     RATE_LIMIT_STORE_TOKEN: optionalSecret,
   })
@@ -95,6 +97,40 @@ export const serverEnvironmentSchema = z
         path: ["SPOTIFY_REDIRECT_URI"],
         message: "is required whenever SPOTIFY_CLIENT_ID is set",
       });
+    }
+  })
+  .superRefine((environment, context) => {
+    // Only the selected provider's credentials are required. Both adapters are
+    // always built, but requiring both keys would make switching providers a
+    // deployment change rather than a configuration one.
+    const credentialsByProvider = {
+      anthropic: [
+        ["ANTHROPIC_API_KEY", environment.ANTHROPIC_API_KEY],
+        ["ANTHROPIC_MODEL", environment.ANTHROPIC_MODEL],
+      ],
+      openai: [
+        ["OPENAI_API_KEY", environment.OPENAI_API_KEY],
+        ["OPENAI_MODEL", environment.OPENAI_MODEL],
+      ],
+      openrouter: [
+        ["OPENROUTER_API_KEY", environment.OPENROUTER_API_KEY],
+        ["OPENROUTER_MODEL", environment.OPENROUTER_MODEL],
+      ],
+    } as const satisfies Record<
+      typeof environment.AI_PROVIDER,
+      readonly (readonly [string, string | undefined])[]
+    >;
+
+    const required = credentialsByProvider[environment.AI_PROVIDER];
+
+    for (const [name, value] of required) {
+      if (!value) {
+        context.addIssue({
+          code: "custom",
+          path: [name],
+          message: `is required when AI_PROVIDER is "${environment.AI_PROVIDER}"`,
+        });
+      }
     }
   });
 
