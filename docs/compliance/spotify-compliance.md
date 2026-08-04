@@ -1,7 +1,7 @@
 # Spotify Compliance Plan
 
-Status: Phase 0 architecture review; not legal advice  
-Last reviewed: 2026-08-02
+Status: Phase 3 pre-implementation re-review; not legal advice  
+Last reviewed: 2026-08-04 (Phase 0 baseline: 2026-08-02)
 
 ## Executive conclusion
 
@@ -24,7 +24,43 @@ Reviewed official sources:
 - Add Items to Playlist: <https://developer.spotify.com/documentation/web-api/reference/add-items-to-playlist>
 - Rate limits: <https://developer.spotify.com/documentation/web-api/concepts/rate-limits>
 
+Added during the 2026-08-04 Phase 3 re-review:
+
+- Authorization Code with PKCE: <https://developer.spotify.com/documentation/web-api/tutorials/code-pkce-flow>
+- Refreshing tokens: <https://developer.spotify.com/documentation/web-api/tutorials/refreshing-tokens>
+- Scopes: <https://developer.spotify.com/documentation/web-api/concepts/scopes>
+- Add Items to Playlist: <https://developer.spotify.com/documentation/web-api/reference/add-items-to-playlist>
+
 This review must be repeated before Phase 3 implementation and before every production release.
+
+## Phase 3 re-review findings (2026-08-04)
+
+The pre-implementation re-review required above was performed against the sources listed. Seven findings changed or confirmed the design.
+
+1. **`GET /me` exposes `account_id` as the immutable linking identifier.** The response documentation marks `account_id` as the stable value for account linking and explicitly advises against using `id` for that purpose. `public.spotify_connections.spotify_user_id` therefore stores `account_id`. The Phase 0 wording ("stable `account_id`") is confirmed correct; the implementation must not substitute `id`.
+
+2. **`GET /me` needs no scope for the fields CrateCompass uses.** `display_name`, `id`, `uri`, and `external_urls` return without any scope. Every field gated behind `user-read-email` or `user-read-private` — `email`, `country`, `product`, `explicit_content` — is now marked **deprecated** in Spotify's own reference. The minimum-scope decision to request neither scope is confirmed and is now additionally supported by deprecation, not only by data minimisation. `followers` is likewise deprecated and unused.
+
+3. **Refresh tokens expire after six months.** Confirmed in the refreshing-tokens documentation and displayed in the app dashboard as `Refresh Token Lifetime: 180 days`. The lifetime starts at user authorization and is **not** extended by exchanging the token. This is a distinct failure mode from access-token expiry and from user revocation, and requires its own reconnect state in the UI. Phase 0 did not anticipate it.
+
+4. **Refresh-token rotation is optional, not guaranteed.** Spotify states that when a refresh token is not returned, the existing token continues to be used. Persistence logic must treat a missing `refresh_token` in a refresh response as success-without-rotation, never as an error or as a null overwrite.
+
+5. **PKCE and client-secret authentication are mutually exclusive.** Spotify's PKCE tutorial documents `client_id` + `code_verifier` on the token request and no client secret; the confidential Authorization Code flow uses HTTP Basic instead. Combining them is undocumented. Recorded as [ADR 0002](../architecture/adr/0002-spotify-oauth-flow.md), which selects PKCE and leaves `SPOTIFY_CLIENT_SECRET` unused.
+
+6. **Rate and quota limits are two separate mechanisms.** Rate limiting is a rolling **30-second** window returning 429 with `Retry-After` in **seconds**. Quota limiting is separate, applies per endpoint bucket in Development Mode, and returns 429 with reason `QUOTA_EXCEEDED`. The July 2026 quota update added a `reason` field to 429 responses precisely so the two can be told apart, and moved quota accounting from per-app to **per-developer-account**, so every Development Mode app under one account draws from a shared budget. Specific numeric thresholds are not published and must not be hard-coded.
+
+7. **Endpoint and redirect baselines are unchanged.** `POST /me/playlists` and `POST /playlists/{playlist_id}/items` are current; `POST /playlists/{playlist_id}/tracks` carries an explicit deprecation notice directing callers to the `/items` endpoint. Maximum 100 URIs per add request. `localhost` remains prohibited as a redirect URI and loopback literals such as `http://127.0.0.1:PORT` remain permitted over HTTP. Development Mode remains capped at 5 allowlisted users and requires the app owner to hold Premium.
+
+8. **The February 2026 migration confirms the four-endpoint baseline by elimination.** Every Spotify surface this project already declined to use has since been removed outright for Development Mode apps: `GET /artists/{id}/top-tracks`, `GET /browse/new-releases`, `GET /browse/categories`, the batch catalog fetches, `GET /users/{id}`, `GET /users/{id}/playlists`, and `POST /users/{user_id}/playlists`. The Phase 0 prohibited-dependency list needs no revision — the platform enforces it. Two consequences do reach the implementation:
+
+   - **`GET /search` now caps `limit` at 10, default 5** (previously 50 and 20). The client's search method must default to a caller-supplied bound no greater than 10 and paginate by `offset` rather than raising `limit`.
+   - **The removed `GET /me` fields are gone, not merely deprecated** — `country`, `email`, `explicit_content`, `followers`, and `product` are no longer returned. The `/me` response schema must treat their absence as normal and must not mark them optional-but-expected.
+
+   The migration guide documents **no OAuth or token changes**; existing authorization flows are unaffected.
+
+### Conflict resolved
+
+The "Storage and caching" section below previously stated that CrateCompass does not persist access tokens, while the Phase 2 schema defines `private.spotify_credentials.access_token_ciphertext` as `not null`. These could not both hold. [ADR 0001](../architecture/adr/0001-spotify-token-encryption.md), approved 2026-08-04, keeps the schema and persists the access token as AEAD ciphertext under the same controls as the refresh token. The storage rules below are corrected accordingly.
 
 ## Product-positioning boundary
 
@@ -89,7 +125,7 @@ The Spotify client uses an endpoint allowlist so accidental addition requires an
 - Use Authorization Code with PKCE, high-entropy state, an exact registered redirect URI, short-lived user-bound transaction state, and one-time callback consumption.
 - Token exchange and refresh occur server-side.
 - Production redirects use HTTPS. Local development uses an explicit loopback IP such as `http://127.0.0.1:3000`; `localhost` is not registered.
-- The Spotify client secret, if used by the confidential server flow, is never sent to the browser.
+- Per [ADR 0002](../architecture/adr/0002-spotify-oauth-flow.md), the PKCE flow is used and the Spotify client secret is not read by application code at all. It cannot reach the browser because nothing reads it.
 
 ### Minimum-scope strategy
 
@@ -105,7 +141,7 @@ The minimum-scope decision is revalidated against current endpoint documentation
 
 - Persist refresh tokens only as authenticated, versioned ciphertext in a private, non-exposed database schema.
 - Keep encryption keys in deployment secret management, outside PostgreSQL.
-- Keep access tokens ephemeral and server-only.
+- Keep access tokens server-only and short-lived, at rest only as versioned ciphertext in the same private-schema row as the refresh token, never beyond `token_expires_at`.
 - Redact OAuth codes, verifiers, authorization headers, cookies, access tokens, refresh tokens, and ciphertext from logs/errors.
 - Atomically handle refresh-token rotation and concurrent refresh.
 - Handle 401 as expired/invalid authorization, 403 as access/scope/allowlist recovery, and 429 according to rate/quota semantics.
@@ -127,7 +163,7 @@ Allowed persistent Spotify fields are limited to:
 
 - Stable connected `account_id`.
 - Connection state, granted scopes, and timestamps.
-- Encrypted refresh token and key version in the private schema.
+- Encrypted refresh token, encrypted access token, and key version in the private schema.
 - Spotify playlist ID created for the user.
 - Spotify resource IDs/URIs only when operationally necessary.
 
@@ -135,7 +171,7 @@ CrateCompass does not:
 
 - Mirror the Spotify catalog.
 - Store raw Spotify response bodies.
-- Persist access tokens.
+- Persist access tokens anywhere other than the encrypted private-schema credential row, or beyond the expiry recorded in `token_expires_at`.
 - Download or rehost Spotify artwork.
 - Persist full playlist contents.
 - Use Spotify data to build user profiles or derived listening metrics.
