@@ -3,6 +3,37 @@ export interface SpotifyActionState {
   readonly message?: string;
 }
 
+/**
+ * Outcome of resolving an externally sourced artist to a Spotify link.
+ *
+ * `ambiguous` and `unresolved` are deliberately first-class. Spotify is used
+ * only to link to content the listener already chose elsewhere, so when the
+ * deterministic matcher cannot decide, the honest answer is to say so and let
+ * the listener pick — never to guess, and never to ask a model to arbitrate.
+ */
+export type SpotifyLinkState =
+  | { readonly status: "idle" }
+  | {
+      readonly status: "resolved";
+      readonly url: string;
+      readonly name: string;
+      readonly reason: string;
+    }
+  | {
+      readonly status: "ambiguous";
+      readonly reason: string;
+      readonly options: readonly {
+        readonly url: string;
+        readonly name: string;
+      }[];
+    }
+  | { readonly status: "unresolved"; readonly reason: string }
+  | { readonly status: "not-connected"; readonly message: string }
+  | { readonly status: "reconnect-required"; readonly message: string }
+  | { readonly status: "unavailable"; readonly message: string };
+
+export const initialSpotifyLinkState: SpotifyLinkState = { status: "idle" };
+
 export const initialSpotifyActionState: SpotifyActionState = { status: "idle" };
 
 /**

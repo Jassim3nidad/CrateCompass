@@ -79,10 +79,29 @@ export type MoodCriteria = z.infer<typeof moodCriteriaSchema>;
  * `groundedIn` forces the model to name which supplied facts it used. An
  * explanation citing nothing is treated as unsupported and discarded — the
  * reference-completeness check the compliance plan requires.
+ *
+ * The structured fields exist so the required explanation shape — what is
+ * shared, what differs, where to start — is enforced by the schema rather than
+ * hoped for in prose. `startingPointReleaseId` is a bare identifier, not a
+ * title, precisely so it can be checked against the release groups that were
+ * supplied: a model cannot invent an identifier that passes that check
+ * (`lib/discovery/explanation.ts`).
  */
 export const artistMatchExplanationSchema = z.object({
   explanation: z.string().trim().min(1).max(1200),
-  groundedIn: boundedList(shortText, 10).min(1),
+  sharedCharacteristics: boundedList(shortText, 5),
+  contrast: z.string().trim().max(300).nullable(),
+  startingPointReleaseId: z.string().trim().max(64).nullable(),
+  /**
+   * Sized to `evidenceFactSchema.statement`, not to `shortText`.
+   *
+   * The prompt asks the model to list the facts it used, and a supplied fact
+   * may be 400 characters. Capping these at 120 meant a model that complied
+   * exactly produced output that failed validation — every real explanation
+   * fell back to the template, which live testing caught and unit tests with
+   * short fixtures did not.
+   */
+  groundedIn: boundedList(z.string().trim().min(1).max(400), 10).min(1),
   confidence: z.enum(["low", "medium", "high"]),
 });
 
@@ -143,11 +162,33 @@ export const evidenceFactSchema = z
   })
   .strict();
 
+/**
+ * Release groups the model may cite as a starting point.
+ *
+ * Bounded at 12 because this is context for one candidate, not a discography
+ * dump, and every additional release is prompt cost with diminishing value.
+ */
+export const explanationReleaseSchema = z
+  .object({
+    id: z.string().trim().min(1).max(64),
+    title: z.string().trim().min(1).max(300),
+    primaryType: z.string().trim().max(40).nullable(),
+    year: z.string().trim().max(4).nullable(),
+  })
+  .strict();
+
 export const explainArtistMatchInputSchema = z
   .object({
     seedArtistName: artistName,
     candidateArtistName: artistName,
+    /**
+     * The listener's own words about what they like. User-authored text is
+     * always permitted to travel; it is the only personalisation input, and it
+     * is never sourced from a provider.
+     */
+    listenerPreference: userText.nullable(),
     evidence: z.array(evidenceFactSchema).min(1).max(12),
+    candidateReleases: z.array(explanationReleaseSchema).max(12),
   })
   .strict();
 

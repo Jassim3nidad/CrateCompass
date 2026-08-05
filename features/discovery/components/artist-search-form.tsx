@@ -1,36 +1,33 @@
-"use client";
-
 import { Search } from "lucide-react";
-import { useState, type FormEvent } from "react";
-import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FieldDescription, Label } from "@/components/ui/label";
 
-export function ArtistSearchForm() {
-  const [query, setQuery] = useState("");
-
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    toast.info("Canonical artist search arrives in Phase 4", {
-      description: query.trim()
-        ? `“${query.trim()}” was not sent to a provider.`
-        : "Enter an artist to preview the form state.",
-    });
-  }
-
+/**
+ * Canonical artist search.
+ *
+ * A plain GET form on purpose. The query belongs in the URL — it is the state
+ * that decides what the page shows — which makes the result shareable, the
+ * back button meaningful, and the search usable before any JavaScript loads.
+ */
+export function ArtistSearchForm({
+  defaultQuery = "",
+}: {
+  readonly defaultQuery?: string;
+}) {
   return (
-    <form onSubmit={handleSubmit} className="space-y-3">
+    <form action="/discover" method="get" role="search" className="space-y-3">
       <Label htmlFor="artist-search">Artist name</Label>
       <div className="flex flex-col gap-3 sm:flex-row">
         <Input
           id="artist-search"
+          name="q"
           type="search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
+          defaultValue={defaultQuery}
           placeholder="Search by artist name"
           aria-describedby="artist-search-description"
+          autoComplete="off"
           className="flex-1"
         />
         <Button type="submit" variant="accent" className="sm:min-w-32">
@@ -39,8 +36,8 @@ export function ArtistSearchForm() {
         </Button>
       </div>
       <FieldDescription id="artist-search-description">
-        MusicBrainz will provide canonical identities before any recommendations
-        are requested.
+        MusicBrainz supplies canonical identities. Pick the exact artist you
+        mean before any recommendation is requested.
       </FieldDescription>
     </form>
   );

@@ -39,6 +39,12 @@ export interface ButtonProps
     React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   readonly asChild?: boolean;
+  /**
+   * React 19 passes `ref` through as an ordinary prop for function components,
+   * so it needs declaring here — `ButtonHTMLAttributes` does not include it.
+   * Focus management after an optimistic update depends on it.
+   */
+  readonly ref?: React.Ref<HTMLButtonElement>;
 }
 
 export function Button({

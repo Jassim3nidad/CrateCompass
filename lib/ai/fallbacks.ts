@@ -52,6 +52,13 @@ export function fallbackArtistMatchExplanation(
       sources.length > 0
         ? `A written explanation is unavailable right now. This relationship was reported by ${sources.join(" and ")}.`
         : "A written explanation is unavailable right now, and no supporting evidence was supplied.",
+    sharedCharacteristics: [],
+    contrast: null,
+    // Never guessed: suggesting a starting release with no model output behind
+    // it would be this module inventing exactly what it exists to avoid.
+    startingPointReleaseId: null,
+    // `groundedIn` and `statement` share a 400-character ceiling, so a supplied
+    // fact always fits without truncation.
     groundedIn: evidence.slice(0, 10).map((fact) => fact.statement),
     confidence: "low",
   };

@@ -8,7 +8,9 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(26);
+-- 29 assertions follow. The count was stale at 26, which pg_prove reports as a
+-- bad plan and a failing file even when every subtest passes.
+select plan(29);
 
 -- ---------------------------------------------------------------------------
 -- The functions exist with the expected shape

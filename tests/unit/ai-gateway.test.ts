@@ -78,6 +78,8 @@ describe("evidence provenance", () => {
   const base = {
     seedArtistName: "Portishead",
     candidateArtistName: "Massive Attack",
+    listenerPreference: null,
+    candidateReleases: [],
   };
 
   it("accepts evidence from approved sources", () => {
@@ -113,6 +115,46 @@ describe("evidence provenance", () => {
   it("requires at least one supporting fact", () => {
     expect(() =>
       buildAiInput(explainArtistMatchInputSchema, { ...base, evidence: [] }),
+    ).toThrow(AiBoundaryViolationError);
+  });
+
+  it("accepts the listener's own words alongside the evidence", () => {
+    const result = buildAiInput(explainArtistMatchInputSchema, {
+      ...base,
+      listenerPreference: "I like the slow, heavy low end.",
+      evidence: [
+        { source: "musicbrainz", statement: "Both formed in Bristol." },
+      ],
+    });
+
+    expect(result.listenerPreference).toBe("I like the slow, heavy low end.");
+  });
+
+  it("rejects a Spotify link pasted into the listener's own words", () => {
+    expect(() =>
+      buildAiInput(explainArtistMatchInputSchema, {
+        ...base,
+        listenerPreference: "like https://open.spotify.com/artist/abc",
+        evidence: [{ source: "musicbrainz", statement: "Formed in Bristol." }],
+      }),
+    ).toThrow(AiBoundaryViolationError);
+  });
+
+  it("rejects a candidate release carrying a Spotify identifier", () => {
+    expect(() =>
+      buildAiInput(explainArtistMatchInputSchema, {
+        ...base,
+        evidence: [{ source: "musicbrainz", statement: "Formed in Bristol." }],
+        candidateReleases: [
+          {
+            id: "rg-1",
+            title: "Dummy",
+            primaryType: "Album",
+            year: "1994",
+            spotifyAlbumId: "abc123",
+          },
+        ],
+      }),
     ).toThrow(AiBoundaryViolationError);
   });
 });
@@ -160,6 +202,9 @@ describe("output schemas", () => {
     // construction, whatever it says.
     const result = artistMatchExplanationSchema.safeParse({
       explanation: "They just sound similar.",
+      sharedCharacteristics: [],
+      contrast: null,
+      startingPointReleaseId: null,
       groundedIn: [],
       confidence: "high",
     });

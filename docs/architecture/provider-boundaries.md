@@ -151,6 +151,22 @@ The AI input gateway must:
 6. Serialize only the parsed result, never the caller's original object.
 7. Emit a redacted security event when rejection occurs.
 
+### Module-graph enforcement (Phase 6)
+
+Two additional disjoint branches were added when discovery began assembling AI
+input, enforced by ESLint and by the repository scan in
+`tests/compliance/spotify-boundary.test.ts`:
+
+- `lib/discovery/**` and `features/discovery/**` may not import a Spotify
+  provider module. These are the modules that build evidence and call the AI
+  port.
+- `features/spotify/**` may not import an AI module. Spotify resolution may
+  read MusicBrainz for a canonical name, and nothing else.
+
+The consequence is that no single file can hold both a Spotify value and an AI
+call, so carrying one to the other requires adding an import that fails lint and
+fails the compliance suite.
+
 ### Test enforcement
 
 - Compile-time tests prove Spotify types are not assignable to AI input types.

@@ -301,6 +301,40 @@ describe.each(harnesses.map((h) => [h.label, h] as const))(
       }
     });
 
+    it("returns a structured artist-match explanation", async () => {
+      harness.succeedWith({
+        explanation: "Both are recorded under overlapping Bristol tags.",
+        sharedCharacteristics: ["trip hop"],
+        contrast: "The candidate also carries dub tags.",
+        startingPointReleaseId: "rg-1",
+        groundedIn: ["MusicBrainz records both under trip hop"],
+        confidence: "medium",
+      });
+
+      const result = await harness.create().explainArtistMatch({
+        seedArtistName: "Portishead",
+        candidateArtistName: "Massive Attack",
+        listenerPreference: "the slow low end",
+        candidateReleases: [
+          {
+            id: "rg-1",
+            title: "Blue Lines",
+            primaryType: "Album",
+            year: "1991",
+          },
+        ],
+        evidence: [
+          {
+            source: "musicbrainz",
+            statement: "MusicBrainz records both under trip hop.",
+          },
+        ],
+      });
+
+      expect(result.startingPointReleaseId).toBe("rg-1");
+      expect(result.sharedCharacteristics).toEqual(["trip hop"]);
+    });
+
     it("answers a discography question from supplied releases only", async () => {
       harness.succeedWith({
         sufficientContext: true,
@@ -351,8 +385,30 @@ describe.each(harnesses.map((h) => [h.label, h] as const))(
         harness.create().explainArtistMatch({
           seedArtistName: "Portishead",
           candidateArtistName: "Massive Attack",
+          listenerPreference: null,
+          candidateReleases: [],
           evidence: [
             { source: "spotify" as never, statement: "Same playlist." },
+          ],
+        }),
+      ).rejects.toBeInstanceOf(AiBoundaryViolationError);
+
+      expect(harness.call).not.toHaveBeenCalled();
+    });
+
+    it("makes zero provider calls for a Spotify link in listener text", async () => {
+      harness.succeedWith(validCriteria);
+
+      await expect(
+        harness.create().explainArtistMatch({
+          seedArtistName: "Portishead",
+          candidateArtistName: "Massive Attack",
+          // The one field a listener can type into freely, so the one most
+          // likely to carry a pasted Spotify URL.
+          listenerPreference: "sounds like https://open.spotify.com/artist/x",
+          candidateReleases: [],
+          evidence: [
+            { source: "musicbrainz", statement: "Both formed in Bristol." },
           ],
         }),
       ).rejects.toBeInstanceOf(AiBoundaryViolationError);

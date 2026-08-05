@@ -5,3 +5,7 @@ node_modules
 playwright-report
 test-results
 package-lock.json
+
+# Local Supabase CLI scratch space: multi-megabyte generated catalogues
+# that Prettier cannot parse and Git already ignores.
+supabase/.temp

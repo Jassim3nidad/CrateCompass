@@ -30,16 +30,21 @@ process.env.SPOTIFY_TOKEN_ENCRYPTION_KEY =
   "c3ludGhldGljLXRlc3Qta2V5LTMyLWJ5dGVzLW9rISE=";
 process.env.SPOTIFY_TOKEN_ENCRYPTION_KEY_VERSION = "1";
 
-Object.defineProperty(window, "matchMedia", {
-  writable: true,
-  value: (query: string) => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addListener: () => undefined,
-    removeListener: () => undefined,
-    addEventListener: () => undefined,
-    removeEventListener: () => undefined,
-    dispatchEvent: () => false,
-  }),
-});
+// Guarded because files that opt into the node environment
+// (`@vitest-environment node`, e.g. tests/live) have no DOM, and a
+// reduced-motion stub is meaningless there.
+if (typeof window !== "undefined") {
+  Object.defineProperty(window, "matchMedia", {
+    writable: true,
+    value: (query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: () => undefined,
+      removeListener: () => undefined,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+      dispatchEvent: () => false,
+    }),
+  });
+}

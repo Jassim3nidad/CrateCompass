@@ -35,6 +35,13 @@ export default defineConfig({
     env: {
       ...process.env,
       NEXT_PUBLIC_APP_URL: `http://127.0.0.1:${port}`,
+      // Provider calls happen server-side, so Playwright cannot intercept
+      // them. The fixture providers are the substitute, and the environment
+      // schema refuses to validate this flag unless APP_ENV is "test" — so
+      // both must be set together and neither can leak into a real
+      // deployment.
+      APP_ENV: "test",
+      PROVIDER_FIXTURES: "1",
     },
     url: `http://127.0.0.1:${port}`,
     reuseExistingServer: !process.env.CI,

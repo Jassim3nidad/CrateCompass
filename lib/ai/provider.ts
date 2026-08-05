@@ -60,8 +60,17 @@ export interface ParseMoodInput {
 export interface ExplainArtistMatchInput {
   readonly seedArtistName: string;
   readonly candidateArtistName: string;
+  /** The listener's own words about what they like, or null. */
+  readonly listenerPreference: string | null;
   /** Bounded, provenance-tagged facts. Never Spotify-derived. */
   readonly evidence: readonly EvidenceFact[];
+  /** MusicBrainz release groups the answer may cite as a starting point. */
+  readonly candidateReleases: readonly {
+    readonly id: string;
+    readonly title: string;
+    readonly primaryType: string | null;
+    readonly year: string | null;
+  }[];
 }
 
 export interface AnswerDiscographyQuestionInput {

@@ -79,6 +79,20 @@ recorded in ADR 0004**, and it is a privacy question rather than a cost one:
 This ADR records the exposure; it does not clear it. It remains a Phase 10
 legal-review item.
 
+### Disclosure implemented in Phase 6
+
+The first surface that accepts free text from a listener — the discovery
+explanation panel — now states the exposure beside the field itself, because
+someone deciding what to type needs it at that moment rather than in a policy
+page they have not opened. The wording is provider-specific and computed
+server-side (`lib/ai/disclosure.ts`, exercised by
+`tests/unit/ai-disclosure.test.ts`).
+
+This does not discharge the obligation. A privacy notice covering every AI
+surface is still required before any pilot user other than the developer uses
+the product, and Phase 7 adds a second free-text surface that must carry the
+same disclosure.
+
 ## Unchanged
 
 The Spotify-to-AI prohibition is untouched. The gateway's strict input schemas

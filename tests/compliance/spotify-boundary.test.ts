@@ -132,6 +132,70 @@ describe("repository scan", () => {
     expect(unguarded).toEqual([]);
   });
 
+  it("keeps discovery evidence modules free of Spotify imports", () => {
+    // Discovery is where AI input is assembled. If a Spotify module were
+    // reachable from here, the boundary would depend on the code inside these
+    // files rather than on the shape of the module graph.
+    const offenders = sources
+      .filter(
+        (source) =>
+          source.path.startsWith("lib/discovery/") ||
+          source.path.startsWith("features/discovery/"),
+      )
+      .filter((source) =>
+        /from\s+["'][^"']*providers\/spotify/.test(source.contents),
+      )
+      .map((source) => source.path);
+
+    expect(offenders).toEqual([]);
+  });
+
+  it("keeps the Spotify feature module free of AI imports", () => {
+    // The counterpart of the rule above: Spotify resolution may import
+    // MusicBrainz for canonical names, but never an AI module.
+    const offenders = sources
+      .filter((source) => source.path.startsWith("features/spotify/"))
+      .filter((source) =>
+        /from\s+["'][^"']*\/ai(\/|["'])/.test(source.contents),
+      )
+      .map((source) => source.path);
+
+    expect(offenders).toEqual([]);
+  });
+
+  it("gates provider fixtures on a test environment", () => {
+    const environment = readFileSync(
+      join(projectRoot, "lib", "validation", "environment.ts"),
+      "utf8",
+    );
+
+    // Fixture data must be unreachable outside tests, or invented artists
+    // could be served as though they came from a provider.
+    expect(environment).toMatch(/PROVIDER_FIXTURES/);
+    expect(environment).toMatch(
+      /PROVIDER_FIXTURES === "1" &&\s*environment\.APP_ENV !== "test"/,
+    );
+
+    const fixtureModules = sources.filter((source) =>
+      source.path.startsWith("lib/providers/fixtures/"),
+    );
+
+    expect(fixtureModules.length).toBeGreaterThan(0);
+
+    // No product module may reach fixtures except the two provider factories.
+    const importers = sources
+      .filter((source) =>
+        /from\s+["'][^"']*providers\/fixtures/.test(source.contents),
+      )
+      .map((source) => source.path)
+      .filter((path) => !path.startsWith("lib/providers/fixtures/"));
+
+    expect(importers.sort()).toEqual([
+      "lib/providers/discovery/index.ts",
+      "lib/providers/musicbrainz/index.ts",
+    ]);
+  });
+
   it("uses the current playlist-items path and never the deprecated one", () => {
     const offenders = sources
       .filter((source) =>

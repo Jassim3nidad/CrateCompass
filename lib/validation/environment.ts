@@ -66,6 +66,13 @@ export const serverEnvironmentSchema = z
     OPENROUTER_MODEL: optionalSecret,
     RATE_LIMIT_STORE_URL: optionalSecret,
     RATE_LIMIT_STORE_TOKEN: optionalSecret,
+    /**
+     * Serves canned MusicBrainz and ListenBrainz data so the end-to-end suite
+     * can exercise the discovery journey without touching a live provider.
+     * Constrained below to `APP_ENV=test`, so a deployment that sets it by
+     * accident refuses to boot rather than silently serving fixture artists.
+     */
+    PROVIDER_FIXTURES: z.enum(["0", "1"]).optional(),
   })
   .passthrough()
   .superRefine((environment, context) => {
@@ -98,6 +105,22 @@ export const serverEnvironmentSchema = z
         code: "custom",
         path: ["SPOTIFY_REDIRECT_URI"],
         message: "is required whenever SPOTIFY_CLIENT_ID is set",
+      });
+    }
+  })
+  .superRefine((environment, context) => {
+    // Fail closed rather than open. If this flag could take effect outside a
+    // test environment, a misconfigured deployment would serve invented
+    // artists as though they were provider data — a correctness and honesty
+    // failure that would be very hard to notice from the outside.
+    if (
+      environment.PROVIDER_FIXTURES === "1" &&
+      environment.APP_ENV !== "test"
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["PROVIDER_FIXTURES"],
+        message: 'may only be enabled when APP_ENV is "test"',
       });
     }
   })

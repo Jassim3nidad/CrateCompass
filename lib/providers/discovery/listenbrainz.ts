@@ -314,19 +314,3 @@ async function fetchSimilarArtists(
     )
   );
 }
-
-export function getDiscoveryProvider(): DiscoveryProvider {
-  const environment = getServerEnvironment();
-
-  if (environment.DISCOVERY_PROVIDER !== "listenbrainz") {
-    // ADR 0003 selected ListenBrainz. Last.fm is intentionally unimplemented:
-    // its terms prohibit sub-licensing its data to a third party, which makes
-    // sending evidence to an AI provider legally ambiguous.
-    throw new DiscoveryProviderError(
-      "not-configured",
-      `Discovery provider "${environment.DISCOVERY_PROVIDER}" is not implemented. Set DISCOVERY_PROVIDER=listenbrainz.`,
-    );
-  }
-
-  return createListenBrainzProvider();
-}

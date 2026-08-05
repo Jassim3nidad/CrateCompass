@@ -4,7 +4,12 @@ import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 import type { z } from "zod";
 
+import { describeProviderFailure } from "@/lib/ai/diagnostics";
 import { buildAiInput } from "@/lib/ai/gateway";
+import {
+  EXPLANATION_SYSTEM,
+  explainArtistMatchUserContent,
+} from "@/lib/ai/prompts";
 import {
   AiProviderError,
   type AiProvider,
@@ -112,6 +117,9 @@ async function complete<Schema extends z.ZodType>(
       provider: "openai",
       operation,
       kind: classified.kind,
+      // Redacted transport detail. Without it, a classified failure is
+      // indistinguishable from any other and cannot be diagnosed from logs.
+      ...describeProviderFailure(error),
       durationMs: Date.now() - startedAt,
     });
     throw classified;
@@ -152,10 +160,6 @@ const MOOD_SYSTEM = `You convert a listener's own description of a mood into str
 Use only what the listener wrote. Do not invent artists, genres, or eras they did not imply.
 If the description is too vague to yield useful criteria, set clarificationNeeded to true and ask one specific question.`;
 
-const EXPLANATION_SYSTEM = `You explain why two artists may be related, using only the supplied evidence.
-Every claim must trace to a supplied fact; list those facts in groundedIn.
-Never assert a collaboration, release, or biographical detail that is not in the evidence.`;
-
 const DISCOGRAPHY_SYSTEM = `You answer questions about an artist's discography using only the supplied releases.
 If the supplied releases do not contain the answer, set sufficientContext to false and explain what is missing.
 Never state a release date, title, or type that is not present in the supplied data.`;
@@ -182,15 +186,12 @@ export function createOpenAiProvider(): AiProvider {
 
     async explainArtistMatch(input: ExplainArtistMatchInput) {
       const safe = buildAiInput(explainArtistMatchInputSchema, input);
-      const evidence = safe.evidence
-        .map((fact) => `- [${fact.source}] ${fact.statement}`)
-        .join("\n");
 
       return complete(
         "artist_match_explanation",
         artistMatchExplanationSchema,
         EXPLANATION_SYSTEM,
-        `Seed artist: ${safe.seedArtistName}\nCandidate artist: ${safe.candidateArtistName}\n\nEvidence:\n${evidence}`,
+        explainArtistMatchUserContent(safe),
       );
     },
 

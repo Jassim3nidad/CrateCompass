@@ -49,6 +49,29 @@ describe("environment validation", () => {
     ).toThrow(/explicit loopback IP/i);
   });
 
+  it("allows provider fixtures in a test environment", () => {
+    const result = validateServerEnvironment({
+      ...validEnvironment,
+      PROVIDER_FIXTURES: "1",
+    });
+
+    expect(result.PROVIDER_FIXTURES).toBe("1");
+  });
+
+  it("refuses to start with provider fixtures outside a test environment", () => {
+    // Booting with this flag in production would serve invented artists as
+    // though they were provider records, so the process must not start.
+    for (const appEnvironment of ["development", "preview", "production"]) {
+      expect(() =>
+        validateServerEnvironment({
+          ...validEnvironment,
+          APP_ENV: appEnvironment,
+          PROVIDER_FIXTURES: "1",
+        }),
+      ).toThrow(/PROVIDER_FIXTURES.*only be enabled when APP_ENV is "test"/i);
+    }
+  });
+
   it("treats blank optional secrets as absent", () => {
     const result = validateServerEnvironment({
       ...validEnvironment,

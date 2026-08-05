@@ -7,8 +7,10 @@ export type Json =
   | Json[];
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  // Preserved by hand across regenerations. `supabase gen types --local` does
+  // not emit this block, but `--linked` does, and dropping it changes how
+  // supabase-js resolves its client generics. Re-add it after running
+  // `npm run db:types`.
   __InternalSupabase: {
     PostgrestVersion: "14.15";
   };
@@ -170,6 +172,33 @@ export type Database = {
           input_value?: string;
           status?: string;
           updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      dismissed_discoveries: {
+        Row: {
+          candidate_artist_mbid: string;
+          candidate_name: string;
+          created_at: string;
+          id: string;
+          seed_artist_mbid: string;
+          user_id: string;
+        };
+        Insert: {
+          candidate_artist_mbid: string;
+          candidate_name: string;
+          created_at?: string;
+          id?: string;
+          seed_artist_mbid: string;
+          user_id: string;
+        };
+        Update: {
+          candidate_artist_mbid?: string;
+          candidate_name?: string;
+          created_at?: string;
+          id?: string;
+          seed_artist_mbid?: string;
           user_id?: string;
         };
         Relationships: [];

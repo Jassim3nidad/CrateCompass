@@ -1,0 +1,248 @@
+// @vitest-environment node
+//
+// The suite defaults to jsdom for component tests. The OpenAI SDK refuses to
+// construct in a browser-like environment — correctly, since that would risk
+// shipping an API key to a client — so this file opts into node.
+
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+
+import { artistMatchExplanationSchema } from "@/lib/ai/schemas";
+import { buildMatchEvidence } from "@/lib/discovery/evidence";
+import { verifyExplanation } from "@/lib/discovery/explanation";
+import {
+  asMusicBrainzId,
+  type CanonicalArtist,
+  type DiscographyRelease,
+} from "@/types/music";
+
+/**
+ * Live provider verification.
+ *
+ * Every other suite in this repository runs against mocks or fixtures, which is
+ * correct: automated tests must not depend on a third party being up, and the
+ * compliance plan forbids touching a real Spotify account. But mocks encode
+ * assumptions, and one assumption in particular cannot be tested with them —
+ * that the provider factories return the *real* adapters when fixtures are off.
+ *
+ * This file therefore does what nothing else does, and only on request:
+ *
+ *     LIVE_PROVIDERS=1 npx vitest run tests/live/providers-live.test.ts
+ *
+ * Without that flag every case is skipped, so `npm test` stays offline and
+ * deterministic.
+ *
+ * Spotify is deliberately absent. Reaching it needs a connected account, and
+ * automated tests may not use one.
+ */
+
+const live = process.env.LIVE_PROVIDERS === "1";
+
+if (live) {
+  // tests/setup.ts overwrites provider credentials with synthetic values so a
+  // developer's real keys can never leak into an ordinary test run. That
+  // protection is right, and it is undone here — in one file, only under an
+  // explicit flag — because live verification is the whole point of this file.
+  // Order matters. Loading follows dotenv semantics and will not overwrite a
+  // variable that is already set, so the synthetic values have to be removed
+  // first — otherwise this file quietly sends a fake API key and the provider
+  // answers with a bare 400 that looks like a malformed request.
+  for (const key of [
+    "AI_PROVIDER",
+    "GEMINI_API_KEY",
+    "GEMINI_MODEL",
+    "OPENAI_API_KEY",
+    "OPENAI_MODEL",
+    "ANTHROPIC_API_KEY",
+    "ANTHROPIC_MODEL",
+    "OPENROUTER_API_KEY",
+    "OPENROUTER_MODEL",
+    "DISCOVERY_PROVIDER",
+    "MUSICBRAINZ_APP_NAME",
+    "MUSICBRAINZ_APP_VERSION",
+    "MUSICBRAINZ_CONTACT",
+    "PROVIDER_FIXTURES",
+  ]) {
+    delete process.env[key];
+  }
+
+  // `.env.local` is read directly rather than through @next/env: that helper
+  // memoises per process and returns early inside a Vitest worker, so it
+  // silently loads nothing and every call goes out with a synthetic key.
+  const envFile = readFileSync(join(process.cwd(), ".env.local"), "utf8");
+
+  for (const rawLine of envFile.split(String.fromCharCode(10))) {
+    const match = /^\s*([A-Z0-9_]+)\s*=\s*(.*)$/.exec(rawLine.trim());
+    const key = match?.[1];
+
+    if (!key) continue;
+
+    const value = (match[2] ?? "").trim().replace(/^["']|["']$/g, "");
+
+    if (value.length > 0 && process.env[key] === undefined) {
+      process.env[key] = value;
+    }
+  }
+
+  process.env.APP_ENV = "development";
+}
+
+/** A real, stable MusicBrainz artist: Portishead. */
+const PORTISHEAD_MBID = "8f6bd1e4-fbe1-4f50-aa9b-94c450ec0f11";
+
+describe.runIf(live)("live provider factories", () => {
+  it("returns the real MusicBrainz client when fixtures are off", async () => {
+    const { areProviderFixturesEnabled } =
+      await import("@/lib/providers/fixtures");
+    const { getMusicBrainzClient } =
+      await import("@/lib/providers/musicbrainz");
+
+    expect(areProviderFixturesEnabled()).toBe(false);
+
+    const candidates = await getMusicBrainzClient().searchArtists(
+      "portishead",
+      {
+        limit: 5,
+      },
+    );
+
+    expect(candidates.length).toBeGreaterThan(0);
+    expect(candidates[0]?.attribution.provenance).toBe("musicbrainz");
+    // The fixture catalogue contains no real artist, so a real name coming
+    // back is proof the switch landed on the live adapter.
+    expect(
+      candidates.some((candidate) => /portishead/i.test(candidate.name)),
+    ).toBe(true);
+  }, 30_000);
+
+  it("does not serve fixture artists when fixtures are off", async () => {
+    const { getMusicBrainzClient } =
+      await import("@/lib/providers/musicbrainz");
+
+    const candidates = await getMusicBrainzClient().searchArtists("harbour", {
+      limit: 10,
+    });
+
+    // "Harbour Lantern" is invented and exists only in the fixture catalogue.
+    expect(
+      candidates.some((candidate) => candidate.name === "Harbour Lantern"),
+    ).toBe(false);
+  }, 30_000);
+
+  it("looks up a canonical artist with releases and tags", async () => {
+    const { getMusicBrainzClient } =
+      await import("@/lib/providers/musicbrainz");
+
+    const { artist, releases } =
+      await getMusicBrainzClient().lookupArtist(PORTISHEAD_MBID);
+
+    expect(artist.name).toMatch(/portishead/i);
+    expect(artist.mbid).toBe(PORTISHEAD_MBID);
+    expect(releases.length).toBeGreaterThan(0);
+    expect(artist.attribution.sourceUrl).toContain("musicbrainz.org");
+  }, 30_000);
+
+  it("returns the real discovery provider with a non-fixture algorithm", async () => {
+    const { getDiscoveryProvider } = await import("@/lib/providers/discovery");
+
+    const evidence = await getDiscoveryProvider().findSimilarArtists({
+      mbid: asMusicBrainzId(PORTISHEAD_MBID),
+      limit: 10,
+    });
+
+    expect(evidence.algorithm).not.toBe("fixture_similarity_v1");
+    expect(evidence.candidates.length).toBeGreaterThan(0);
+    expect(evidence.attribution.provenance).toBe("listenbrainz");
+
+    for (const candidate of evidence.candidates) {
+      expect(candidate.mbid).toBeTruthy();
+      expect(candidate.score).toBeGreaterThan(0);
+    }
+  }, 30_000);
+
+  it("builds evidence and a verified explanation from live provider data", async () => {
+    const { getMusicBrainzClient } =
+      await import("@/lib/providers/musicbrainz");
+    const { getDiscoveryProvider } = await import("@/lib/providers/discovery");
+    const { getAiProvider } = await import("@/lib/ai");
+
+    const seed = await getMusicBrainzClient().lookupArtist(PORTISHEAD_MBID);
+    const similarity = await getDiscoveryProvider().findSimilarArtists({
+      mbid: asMusicBrainzId(PORTISHEAD_MBID),
+      limit: 10,
+    });
+
+    const candidate = similarity.candidates[0];
+    expect(candidate).toBeDefined();
+    if (!candidate?.mbid) return;
+
+    const looked = await getMusicBrainzClient().lookupArtist(candidate.mbid);
+    const candidateArtist: CanonicalArtist = looked.artist;
+    const candidateReleases: readonly DiscographyRelease[] = looked.releases;
+
+    const evidence = buildMatchEvidence({
+      seed: seed.artist,
+      candidate,
+      candidateArtist,
+      candidateReleases,
+      rank: 1,
+      totalCandidates: similarity.candidates.length,
+      topScore: candidate.score,
+      similarityAttribution: similarity.attribution,
+    });
+
+    expect(evidence.facts.length).toBeGreaterThan(0);
+    // The boundary property, checked against real provider data rather than
+    // hand-written fixtures.
+    expect(JSON.stringify(evidence)).not.toMatch(/spotify/i);
+
+    const provider = getAiProvider();
+    const aiInput = {
+      seedArtistName: seed.artist.name,
+      candidateArtistName: candidate.name,
+      listenerPreference: "I like the slow, heavy low end.",
+      evidence: evidence.facts,
+      candidateReleases: candidateReleases.slice(0, 12).map((release) => ({
+        id: release.mbid,
+        title: release.title,
+        primaryType: release.primaryType,
+        year: release.firstReleaseDate.value?.slice(0, 4) ?? null,
+      })),
+    };
+    const output = await provider.explainArtistMatch(aiInput);
+
+    expect(artistMatchExplanationSchema.safeParse(output).success).toBe(true);
+
+    const verified = verifyExplanation({
+      output,
+      evidence,
+      allowedReleases: candidateReleases.map((release) => ({
+        releaseId: release.mbid,
+        title: release.title,
+        year: release.firstReleaseDate.value?.slice(0, 4) ?? null,
+        primaryType: release.primaryType,
+        sourceUrl: release.attribution.sourceUrl,
+      })),
+      model: provider.model,
+    });
+
+    // Either outcome is a pass: a verified explanation, or a rejection that
+    // correctly names why. What would fail is an unverifiable claim slipping
+    // through, and there is no third branch for that.
+    if (verified.ok) {
+      expect(verified.explanation.summary.length).toBeGreaterThan(0);
+      expect(verified.explanation.source).toBe("ai");
+    } else {
+      expect([
+        "ungrounded-claim",
+        "unknown-release",
+        "forbidden-content",
+      ]).toContain(verified.reason);
+    }
+
+    console.info(
+      `[live] provider=${provider.name} model=${provider.model} verified=${verified.ok} facts=${evidence.facts.length}`,
+    );
+  }, 120_000);
+});

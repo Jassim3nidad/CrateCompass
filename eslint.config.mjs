@@ -27,6 +27,27 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  // Discovery evidence and its orchestration are the modules that build AI
+  // input. Keeping them structurally unable to reach a Spotify adapter is what
+  // makes "no Spotify content enters the AI layer" a property of the module
+  // graph rather than a claim about the code inside it.
+  {
+    files: ["lib/discovery/**/*.ts", "features/discovery/**/*.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["**/providers/spotify/**", "@/lib/providers/spotify/*"],
+              message:
+                "Discovery modules must not import Spotify provider modules. Spotify resolution belongs in features/spotify, which imports no AI module.",
+            },
+          ],
+        },
+      ],
+    },
+  },
   {
     files: ["lib/providers/spotify/**/*.ts"],
     rules: {
