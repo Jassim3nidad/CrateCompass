@@ -1,6 +1,6 @@
 # Phase 7 — Natural-language mood playlists: scoping
 
-Status: proposed, not started — awaiting decisions on the open questions  
+Status: scoped and decided, not started — awaiting approval to implement  
 Date: 2026-08-05  
 Builds on: [phase-7-mood-scope.md](phase-7-mood-scope.md) (ListenBrainz
 constraints), [ADR 0003](../architecture/adr/0003-discovery-provider-selection.md),
@@ -60,7 +60,7 @@ provider disclosure Phase 6 added (`lib/ai/disclosure.ts`).
 3. Seed confirmation — tag-search candidates, placeholder-filtered and
    re-ranked, chosen by a person before expansion.
 4. Expansion through ListenBrainz similarity from the confirmed seed.
-5. Track selection (see open question 1).
+5. Track selection from MusicBrainz studio releases (decision 1).
 6. Candidate review: remove, replace, reorder before anything is created.
 7. Explicit confirmation, then idempotent Spotify playlist creation with
    batched item addition and accurate partial-failure reporting.
@@ -119,28 +119,63 @@ control Phase 7 needs.
 - **Playlist creation is the first irreversible outward action** in the product.
   Idempotency and honest partial-failure reporting are not polish here.
 
-## Open questions
+## Decisions
 
-These block implementation; none should be answered by guessing.
+Resolved 2026-08-05. Questions 1 and 3 were delegated; 2 was decided by the
+project owner.
 
-1. **Where do tracks come from?** Three viable answers:
-   - *(a) MusicBrainz studio-album tracks.* Strictly sourced, no popularity
-     signal — track order within an album is arbitrary, so the playlist is
-     "real tracks by the right artists" rather than "their best tracks".
-   - *(b) Spotify search ranking picks the track* for an artist we already
-     chose by non-Spotify means. Stays inside the endpoint allowlist and never
-     reaches AI, but lets Spotify influence content selection, which is a
-     stricter reading of the boundary than "resolution only". **This is a
-     compliance judgment, not a technical one.**
-   - *(c) Defer track playlists;* ship mood → artist shortlist only.
-2. **Public playlists.** The connection holds `playlist-modify-private` and the
-   client hardcodes `public: false`. Supporting the documented public/private
-   control needs an additional scope and re-consent from every connected user.
-   Keep private-only, or widen the scope?
-3. **Explicit-content control.** Enforcing it needs the `explicit` flag from
-   Spotify search results, which today's schema does not parse. Filtering-only
-   use never reaches AI. Parse it, or drop the control?
-4. **Per-track persistence.** Repairing a partially-added playlist requires
-   knowing which URIs were meant to be in it. Store MusicBrainz ids plus
-   Spotify URIs per generated playlist, or keep the record artist-level and
-   accept that partial failures can be reported but not repaired?
+### 1. Tracks come from MusicBrainz studio releases
+
+Spotify search ranking will **not** choose tracks. Letting it pick which of an
+artist's recordings appears would put Spotify in the content-selection path,
+which reads against the forbidden-responsibilities list in
+[provider-boundaries.md](../architecture/provider-boundaries.md) and would be
+the first thing a Phase 11 compliance audit questioned. It is also the one
+choice that cannot be explained to a listener in the product's own terms: every
+other selection in CrateCompass is traceable to a named source, and this one
+would be "because Spotify put it first".
+
+So each candidate track is a recording on a studio release group credited to a
+selected artist — live albums, compilations and remix releases excluded, the
+same rule Phase 6 uses for a starting point. The interface names the album each
+track came from, which turns the missing popularity signal into visible
+provenance rather than a hidden weakness.
+
+Selection sits behind a `TrackRankingSource` port with a MusicBrainz
+implementation. When the ListenBrainz popularity API returns from its current
+disabled state, it becomes a second adapter behind that port — an adapter
+change, not a redesign.
+
+### 2. Public playlists are supported
+
+`playlist-modify-public` is added to the requested scopes, and
+`createPlaylist` takes the visibility as a parameter instead of hardcoding
+`public: false`.
+
+Consequences that must ship with it:
+
+- Every already-connected account is missing the new scope. `hasRequiredScopes`
+  will report the connection as insufficient-scope and the existing reconnect
+  path handles it — but the copy must explain *why* re-authorization is being
+  asked for rather than presenting it as an error.
+- The minimum-scope statements in the compliance plan, the connections page,
+  and ADR 0002 all describe private-only. They are now wrong and must be
+  updated in the same change.
+- Private stays the default in the interface. The listener opts into public.
+
+### 3. The explicit-content control is real
+
+`explicit` is added to the Spotify search response schema and used **only** to
+filter candidates out before review. It is never sent to AI, never persisted,
+and never displayed as Spotify metadata. Shipping a documented control that
+silently does nothing is worse than either alternative.
+
+### 4. Per-track records are persisted
+
+A generated playlist stores its intended tracks: MusicBrainz recording id,
+resolved Spotify URI, and per-item add status. Without that, a playlist whose
+items only partially added can be reported honestly but never repaired, and
+"created but incomplete" is a state this feature will genuinely produce.
+
+Spotify URIs are stored here under the "only when operationally required"
+exception, and the retention rules from Phase 9 apply to them.
