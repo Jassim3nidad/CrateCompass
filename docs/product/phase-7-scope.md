@@ -75,8 +75,8 @@ provider disclosure Phase 6 added (`lib/ai/disclosure.ts`).
 - **Language preference as an enforced filter.** MusicBrainz release language
   is partial; treat as a hint.
 - **Unsupervised mood-to-playlist.** Seed confirmation stays a required step.
-- **Mood-to-track discovery without a seed artist**, unless open question 1
-  resolves otherwise.
+- **Mood-to-track discovery without a seed artist.** Decision 1 routes every
+  track through a selected artist; there is no tag-to-track path.
 
 ## Rough module plan
 
