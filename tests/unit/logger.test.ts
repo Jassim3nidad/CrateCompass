@@ -41,3 +41,44 @@ describe("structured logger", () => {
     });
   });
 });
+
+describe("usage counts", () => {
+  it("keeps numeric token counts readable so cost is visible", () => {
+    const redacted = redactSensitive({
+      event: "ai.request",
+      inputTokens: 1200,
+      outputTokens: 340,
+      totalTokens: 1540,
+    }) as Record<string, unknown>;
+
+    expect(redacted.inputTokens).toBe(1200);
+    expect(redacted.outputTokens).toBe(340);
+    expect(redacted.totalTokens).toBe(1540);
+  });
+
+  it("still redacts a credential whose key merely looks like a count", () => {
+    // The exemption is numeric-only, so a string under an allowlisted key is
+    // treated as a credential rather than a count.
+    const redacted = redactSensitive({
+      inputTokens: "Bearer super-secret-value",
+      access_token: "BQC-secret",
+      refreshToken: "AQD-secret",
+    }) as Record<string, unknown>;
+
+    expect(redacted.inputTokens).toBe("[REDACTED]");
+    expect(redacted.access_token).toBe("[REDACTED]");
+    expect(redacted.refreshToken).toBe("[REDACTED]");
+  });
+
+  it("does not exempt a credential key that happens to be numeric", () => {
+    const redacted = redactSensitive({
+      access_token: 12345,
+      apiKey: 99,
+      authorization: 1,
+    }) as Record<string, unknown>;
+
+    expect(redacted.access_token).toBe("[REDACTED]");
+    expect(redacted.apiKey).toBe("[REDACTED]");
+    expect(redacted.authorization).toBe("[REDACTED]");
+  });
+});

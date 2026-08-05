@@ -47,6 +47,12 @@ export type SpotifyOperation =
       readonly kind: "create-playlist";
       readonly name: string;
       readonly description: string | null;
+      /**
+       * Explicit rather than defaulted. Spotify's own default for this field
+       * is `true`, so an omitted value would publish a playlist the listener
+       * did not ask to publish.
+       */
+      readonly isPublic: boolean;
     }
   | {
       readonly kind: "add-playlist-items";
@@ -88,9 +94,9 @@ function resolveRequest(operation: SpotifyOperation): ResolvedRequest {
         path: "/v1/me/playlists",
         body: {
           name: operation.name,
-          // Private by default: the granted scope is playlist-modify-private,
-          // and Spotify's default for this field is `true`.
-          public: false,
+          // Carries the listener's choice. Both scopes are granted, so the
+          // value here — not the scope — is what decides visibility.
+          public: operation.isPublic,
           collaborative: false,
           ...(operation.description
             ? { description: operation.description }
@@ -408,13 +414,19 @@ const createdPlaylistSchema = z.object({
 
 export async function createPlaylist(
   accessToken: string,
-  input: { readonly name: string; readonly description?: string | null },
+  input: {
+    readonly name: string;
+    readonly description?: string | null;
+    /** Omitted means private. Publishing is always an explicit choice. */
+    readonly isPublic?: boolean;
+  },
 ): Promise<{ readonly id: SpotifyResourceId; readonly uri: SpotifyUri }> {
   const payload = await callSpotify(
     {
       kind: "create-playlist",
       name: input.name,
       description: input.description ?? null,
+      isPublic: input.isPublic ?? false,
     },
     accessToken,
   );

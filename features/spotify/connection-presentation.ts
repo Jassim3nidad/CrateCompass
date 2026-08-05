@@ -1,6 +1,7 @@
 import type { ProviderAvailability } from "@/types/provider";
 import type { SpotifyConnectionState } from "@/lib/providers/spotify/types";
 import type { SpotifyCallbackStatus } from "@/features/spotify/state";
+import { REAUTHORIZATION_COPY } from "@/features/spotify/reauthorization-copy";
 
 /**
  * Presentation mapping for every connection and callback state.
@@ -38,8 +39,7 @@ export const connectionPresentation: Record<
   active: {
     badge: "available",
     label: "Connected",
-    description:
-      "CrateCompass can create private playlists in this Spotify account when you explicitly approve them.",
+    description: REAUTHORIZATION_COPY.connectedSummary,
     action: "none",
   },
   expired: {
@@ -58,9 +58,10 @@ export const connectionPresentation: Record<
   },
   "insufficient-scope": {
     badge: "degraded",
-    label: "Permission missing",
-    description:
-      "The connection is missing the private-playlist permission CrateCompass needs. Reconnect and accept the requested permission.",
+    // Not "Permission missing": for every account connected before the public
+    // scope was added, this state is a product change, not a fault of theirs.
+    label: "Reconnect to finish setup",
+    description: `${REAUTHORIZATION_COPY.connections.body} ${REAUTHORIZATION_COPY.connections.reassurance}`,
     action: "reconnect",
   },
   revoked: {
@@ -83,7 +84,8 @@ export const callbackPresentation: Record<
 > = {
   connected: {
     tone: "success",
-    message: "Spotify is connected. Only private-playlist access was granted.",
+    message:
+      "Spotify is connected. Only playlist creation was granted — private by default, public when you choose it.",
   },
   denied: {
     tone: "error",
@@ -102,8 +104,7 @@ export const callbackPresentation: Record<
   },
   "insufficient-scope": {
     tone: "error",
-    message:
-      "Spotify did not grant the private-playlist permission, so no connection was recorded. Try again and accept the requested permission.",
+    message: `${REAUTHORIZATION_COPY.declined.heading}. ${REAUTHORIZATION_COPY.declined.body}`,
   },
   "not-allowlisted": {
     tone: "error",

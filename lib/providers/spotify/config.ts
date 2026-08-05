@@ -6,15 +6,25 @@ import { SpotifyProviderError } from "@/lib/providers/spotify/types";
 /**
  * Minimum scope set (ADR 0002 and the compliance plan).
  *
- * Creating a private playlist and adding items to it both require only
- * `playlist-modify-private`. `GET /me` needs no scope for the fields we read —
- * every field gated behind `user-read-email` or `user-read-private` was
- * removed from the response in Spotify's February 2026 migration.
+ * `GET /me` needs no scope for the fields we read — every field gated behind
+ * `user-read-email` or `user-read-private` was removed from the response in
+ * Spotify's February 2026 migration.
+ *
+ * `playlist-modify-public` was added on 2026-08-05, when the public/private
+ * choice was approved for Phase 7. It is requested at connect time rather than
+ * incrementally: Spotify has no partial upgrade for an existing grant, so an
+ * "incremental" request is the same reconnect with an extra step. Every
+ * connection made before that date lacks it and will be reported as
+ * insufficient-scope until the listener reconnects — see
+ * `features/spotify/reauthorization-copy.ts` for how that is explained.
  *
  * Adding a scope here is a compliance decision, not a code change: it widens
  * what the user is asked to grant.
  */
-export const SPOTIFY_SCOPES = ["playlist-modify-private"] as const;
+export const SPOTIFY_SCOPES = [
+  "playlist-modify-private",
+  "playlist-modify-public",
+] as const;
 
 export type SpotifyScope = (typeof SPOTIFY_SCOPES)[number];
 

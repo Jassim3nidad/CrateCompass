@@ -36,8 +36,12 @@ describe("endpoint allowlist", () => {
     expect(resolveRequest({ kind: "current-user" }).path).toBe("/v1/me");
 
     expect(
-      resolveRequest({ kind: "create-playlist", name: "n", description: null })
-        .path,
+      resolveRequest({
+        kind: "create-playlist",
+        name: "n",
+        description: null,
+        isPublic: false,
+      }).path,
     ).toBe("/v1/me/playlists");
 
     const addItems = resolveRequest({
@@ -59,8 +63,12 @@ describe("endpoint allowlist", () => {
         types: ["artist"],
         limit: 5,
       }).path,
-      resolveRequest({ kind: "create-playlist", name: "n", description: null })
-        .path,
+      resolveRequest({
+        kind: "create-playlist",
+        name: "n",
+        description: null,
+        isPublic: false,
+      }).path,
       resolveRequest({
         kind: "add-playlist-items",
         playlistId: asSpotifyResourceId("p"),
@@ -88,14 +96,28 @@ describe("endpoint allowlist", () => {
     }
   });
 
-  it("creates playlists as private, matching the granted scope", () => {
+  it("creates a private playlist when privacy is not chosen", () => {
     const request = resolveRequest({
       kind: "create-playlist",
       name: "Night drive",
       description: null,
+      isPublic: false,
     });
 
     expect(request.body).toMatchObject({ public: false, collaborative: false });
+  });
+
+  it("publishes only when the listener chose to", () => {
+    // Spotify's own default for this field is `true`, so the value must always
+    // be sent explicitly rather than omitted.
+    const request = resolveRequest({
+      kind: "create-playlist",
+      name: "Night drive",
+      description: null,
+      isPublic: true,
+    });
+
+    expect(request.body).toMatchObject({ public: true, collaborative: false });
   });
 
   it("refuses a search limit above Spotify's February 2026 cap", () => {

@@ -88,6 +88,7 @@ No Spotify OAuth or external music provider calls. Approve Phase 3 separately.
 - Stable `account_id` linking, encrypted refresh-token storage, atomic refresh/rotation, reauthorization, and disconnect.
 - Server-only Spotify client limited to `GET /me`, `GET /search`, `POST /me/playlists`, and `POST /playlists/{id}/items`.
 - Private-playlist minimum scope by default; incremental public scope only if approved.
+  *(Approved 2026-08-05 for Phase 7. The requested set is now `playlist-modify-private` and `playlist-modify-public`; accounts connected before that change must reauthorize.)*
 - Timeout, safe retry, `Retry-After`, `QUOTA_EXCEEDED`, 401/403/429, and redacted error handling.
 - Accessible `/settings/connections` experience.
 

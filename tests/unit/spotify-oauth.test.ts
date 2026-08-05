@@ -61,7 +61,7 @@ describe("state", () => {
 });
 
 describe("authorize URL", () => {
-  it("requests only the minimum scope and uses S256", () => {
+  it("requests only the two playlist scopes and uses S256", () => {
     const url = new URL(
       buildAuthorizeUrl({ state: "state-value", codeChallenge: "challenge" }),
     );
@@ -70,7 +70,11 @@ describe("authorize URL", () => {
     expect(url.pathname).toBe("/authorize");
     expect(url.searchParams.get("response_type")).toBe("code");
     expect(url.searchParams.get("code_challenge_method")).toBe("S256");
-    expect(url.searchParams.get("scope")).toBe("playlist-modify-private");
+    // Both playlist-modification scopes and nothing else. A scope appearing
+    // here that is not in this list is a compliance regression, not a feature.
+    expect(url.searchParams.get("scope")).toBe(
+      "playlist-modify-private playlist-modify-public",
+    );
     expect(url.searchParams.get("redirect_uri")).toBe(
       "http://127.0.0.1:3000/api/integrations/spotify/callback",
     );

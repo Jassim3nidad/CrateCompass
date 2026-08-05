@@ -248,7 +248,7 @@ The MVP is acceptable only when:
 3. Mood criteria and every AI response pass strict schemas.
 4. Automated tests prove Spotify-originated content is rejected before any AI adapter call.
 5. Ambiguous external identities are not silently resolved.
-6. A connected allowlisted user can approve and create a playlist with current endpoints and minimum scopes.
+6. A connected allowlisted user can approve and create a playlist, private or public at their choice, with current endpoints and no scope beyond the two playlist-modification scopes.
 7. Disconnect makes future refresh impossible and account deletion removes user-owned records.
 8. RLS tests deny anonymous and cross-user access.
 9. All required interface states and critical keyboard workflows are verified.

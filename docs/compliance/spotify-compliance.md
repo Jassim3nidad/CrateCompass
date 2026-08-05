@@ -129,8 +129,10 @@ The Spotify client uses an endpoint allowlist so accidental addition requires an
 
 ### Minimum-scope strategy
 
-- Default MVP playlist creation is private and requests `playlist-modify-private` only.
-- If the user-facing product later supports creating public playlists, request `playlist-modify-public` through explicit incremental reauthorization before that operation.
+- Playlist creation defaults to private in the interface, and the requested scope set is `playlist-modify-private` **and** `playlist-modify-public`.
+- The public scope was approved for Phase 7 on 2026-08-05, when the product owner accepted the documented consequence: every account connected before that change is missing the new scope and must reauthorize. Existing connections surface as `insufficient-scope` and are handled by the existing reconnect path, with copy that explains the reason rather than reporting a fault.
+- The scope is requested at connect time rather than incrementally. Spotify's authorization flow has no partial upgrade for an existing grant, so an incremental request is the same reconnect with an extra step; asking once is more honest about what is being granted.
+- Private remains the default a listener has to change. A wider scope permits a public playlist; it does not create one.
 - Do not request `user-read-email` or `user-read-private`; CrateCompass does not need the deprecated email, country, product, or explicit-content fields.
 - Do not request top-item, playback, recently-played, saved-library, follow, or streaming scopes.
 - Store and display granted scopes and fail with a clear reconnect flow when insufficient.
@@ -220,7 +222,7 @@ Provide accessible states for connecting, connected, insufficient scope, expired
 | No Spotify-to-AI transfer | Isolated types, allowlist gateway, provenance, runtime rejection | Compile, property, integration, and outbound-spy tests |
 | No deprecated discovery dependencies | Spotify endpoint allowlist | Contract test and repository scan |
 | Current playlist endpoints | `/me/playlists` and `/items` client methods | Request contract tests |
-| Minimum scopes | Private-by-default incremental scope design | OAuth URL and insufficient-scope tests |
+| Minimum scopes | Private and public playlist modification only, private by default in the interface | OAuth URL and insufficient-scope tests |
 | Secure auth | Code + PKCE, state, exact redirects, server exchange | Tamper/replay/redirect tests |
 | Token secrecy | Private schema, encryption, redaction | DB grant, bundle, log, rotation tests |
 | No catalog mirroring | Minimal schema and TTL cache | Schema review and persistence tests |
