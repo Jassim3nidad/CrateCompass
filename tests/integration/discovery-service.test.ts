@@ -150,7 +150,12 @@ beforeEach(() => {
   mocks.readDismissedCandidates.mockResolvedValue(new Set());
   mocks.readSavedCandidates.mockResolvedValue(new Set());
   mocks.claimAiUsage.mockResolvedValue(undefined);
-  mocks.lookupArtist.mockResolvedValue({ artist: seedArtist, releases });
+  mocks.lookupArtist.mockResolvedValue({
+    artist: seedArtist,
+    releases,
+    releaseGroupTotal: releases.length,
+    releasesComplete: true,
+  });
 });
 
 describe("loadDiscoveryPage", () => {
@@ -243,7 +248,12 @@ describe("loadDiscoveryPage", () => {
 });
 
 describe("explainCandidate", () => {
-  const seed = { artist: seedArtist, releases };
+  const seed = {
+    artist: seedArtist,
+    releases,
+    releaseGroupTotal: releases.length,
+    releasesComplete: true,
+  };
 
   it("sends only approved evidence to the AI provider", async () => {
     mocks.findSimilarArtists.mockResolvedValue(similarityOf(3));

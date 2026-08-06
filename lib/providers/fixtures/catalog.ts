@@ -39,6 +39,8 @@ export const FIXTURE_SEEDS = {
   full: MBID.harbourLanternGroup,
   noResults: MBID.quietLedger,
   providerDown: MBID.brokenSignal,
+  /** 40 release groups: above the silent 25-group lookup cap. */
+  prolific: "f1000000-0000-4000-8000-000000000005",
 } as const;
 
 function attribution(mbid: string, kind: "artist" | "release-group") {
@@ -110,7 +112,46 @@ const derivedCandidates: readonly FixtureArtist[] = SIMILAR_NAMES.map(
   }),
 );
 
+/**
+ * A deliberately prolific artist: 40 release groups, above the 25 the
+ * MusicBrainz lookup subquery silently caps at.
+ *
+ * Most are compilations and live records, mirroring what a real prolific
+ * catalogue looks like — Nirvana's first 100 groups contain 52 compilations and
+ * 3 plain studio albums. A fixture where every group were a studio album would
+ * not have caught the truncation bug, because the first 25 would have looked
+ * fine.
+ */
+const PROLIFIC_MBID = "f1000000-0000-4000-8000-000000000005";
+
+const prolificArtist: FixtureArtist = {
+  mbid: PROLIFIC_MBID,
+  name: "Ledger Line Choir",
+  sortName: "Ledger Line Choir",
+  disambiguation: "prolific fixture artist",
+  type: "Group",
+  country: "GB",
+  genres: ["post-rock"],
+  tags: ["hazy"],
+  releases: Array.from({ length: 40 }, (_, index) => {
+    // The two plain studio albums sit at positions 30 and 35, past the cap, so
+    // a truncated fetch finds neither.
+    const isStudio = index === 30 || index === 35;
+
+    return {
+      mbid: `f3000000-0000-4000-8000-${String(500 + index).padStart(12, "0")}`,
+      title: isStudio
+        ? `Ledger Line Choir — Studio ${index}`
+        : `Ledger Line Choir — Collection ${index}`,
+      primaryType: "Album",
+      secondaryTypes: isStudio ? [] : ["Compilation"],
+      firstReleaseDate: `${1990 + index}`,
+    };
+  }),
+};
+
 const artists: readonly FixtureArtist[] = [
+  prolificArtist,
   {
     mbid: MBID.harbourLanternGroup,
     name: "Harbour Lantern",
@@ -364,9 +405,19 @@ export function fixtureLookup(
   mbid: string,
 ): CanonicalArtistWithDiscography | null {
   const artist = byMbid.get(mbid);
-  return artist
-    ? { artist: toCanonical(artist), releases: toReleases(artist) }
-    : null;
+
+  if (!artist) {
+    return null;
+  }
+
+  const releases = toReleases(artist);
+
+  return {
+    artist: toCanonical(artist),
+    releases,
+    releaseGroupTotal: releases.length,
+    releasesComplete: true,
+  };
 }
 
 export interface FixtureSimilarRow {

@@ -18,7 +18,10 @@ import type {
 import { logger } from "@/lib/observability/logger";
 import { getDiscoveryProvider } from "@/lib/providers/discovery";
 import { DiscoveryProviderError } from "@/lib/providers/discovery/port";
-import { MusicBrainzError } from "@/lib/providers/musicbrainz/client";
+import {
+  MusicBrainzError,
+  type CanonicalArtistWithDiscography,
+} from "@/lib/providers/musicbrainz/client";
 import { getMusicBrainzClient } from "@/lib/providers/musicbrainz";
 import {
   readDismissedCandidates,
@@ -137,10 +140,13 @@ export async function searchCanonicalArtists(
   }
 }
 
-export interface SeedArtist {
-  readonly artist: CanonicalArtist;
-  readonly releases: readonly DiscographyRelease[];
-}
+/**
+ * Re-exported from the client so the completeness fields cannot be dropped on
+ * the way through. They were added because the MusicBrainz lookup silently
+ * truncates release groups at 25, and a consumer that states a count needs to
+ * know whether it has all of them.
+ */
+export type SeedArtist = CanonicalArtistWithDiscography;
 
 export async function loadSeedArtist(
   mbid: string,

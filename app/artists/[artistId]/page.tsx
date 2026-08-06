@@ -72,11 +72,15 @@ export default async function ArtistPage({ params }: ArtistPageProps) {
     );
   }
 
-  const { artist, releases } = seed.value;
+  const { artist, releaseGroupTotal, releasesComplete } = seed.value;
 
   return (
     <div className="page-shell space-y-6">
-      <ArtistHeader artist={artist} releaseCount={releases.length} />
+      <ArtistHeader
+        artist={artist}
+        releaseCount={releaseGroupTotal}
+        releasesComplete={releasesComplete}
+      />
 
       <div className="flex flex-wrap items-center gap-3">
         <Button asChild variant="accent">
@@ -97,8 +101,9 @@ export default async function ArtistPage({ params }: ArtistPageProps) {
               <div>
                 <CardTitle>Discography</CardTitle>
                 <CardDescription>
-                  MusicBrainz records {releases.length} release group
-                  {releases.length === 1 ? "" : "s"} for this artist.
+                  MusicBrainz records {releaseGroupTotal.toLocaleString()}{" "}
+                  release group{releaseGroupTotal === 1 ? "" : "s"} for this
+                  artist.
                 </CardDescription>
               </div>
               <Disc3

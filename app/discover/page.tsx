@@ -152,7 +152,8 @@ async function DiscoveryPanel({ mbid }: { readonly mbid: string }) {
     <div className="space-y-6">
       <ArtistHeader
         artist={seed.value.artist}
-        releaseCount={seed.value.releases.length}
+        releaseCount={seed.value.releaseGroupTotal}
+        releasesComplete={seed.value.releasesComplete}
       />
 
       {/* A discovery-provider failure must not take the artist page with it:

@@ -71,6 +71,7 @@ const evidence = {
   userAgent: USER_AGENT.replace(contact, "<redacted-contact>"),
   musicBrainzSearch: [],
   musicBrainzLookup: [],
+  musicBrainzReleaseGroupBrowse: [],
   listenBrainzSimilarArtists: [],
   errorResponses: [],
 };
@@ -142,6 +143,38 @@ for (const { label, mbid } of lookupMbids) {
   const result = await capture(url, mbHeaders);
 
   evidence.musicBrainzLookup.push({ label, mbid, url, result });
+  console.log(`  ${label.padEnd(24)} ${result.status} ${result.durationMs}ms`);
+
+  await sleep(1100);
+}
+
+console.log("Capturing MusicBrainz release-group browse pages...");
+// The lookup subquery caps release groups at 25 without saying so, which is
+// why the browse endpoint became a production dependency. It needs recorded
+// evidence of its own, or provider drift there fails in production instead of
+// in CI. Nirvana is the case that matters: 573 groups against Portishead's 25.
+for (const { label, mbid, offset } of [
+  {
+    label: "prolific-first-page",
+    mbid: "5b11f4ce-a62d-471e-81fc-a69a8278c7da",
+    offset: 0,
+  },
+  {
+    label: "prolific-later-page",
+    mbid: "5b11f4ce-a62d-471e-81fc-a69a8278c7da",
+    offset: 500,
+  },
+]) {
+  const url = `${MB_ORIGIN}/ws/2/release-group?artist=${mbid}&inc=genres+tags&limit=100&offset=${offset}&fmt=json`;
+  const result = await capture(url, mbHeaders);
+
+  evidence.musicBrainzReleaseGroupBrowse.push({
+    label,
+    mbid,
+    offset,
+    url,
+    result,
+  });
   console.log(`  ${label.padEnd(24)} ${result.status} ${result.durationMs}ms`);
 
   await sleep(1100);

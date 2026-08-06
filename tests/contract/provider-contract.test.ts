@@ -23,8 +23,12 @@ vi.mock("@/lib/providers/musicbrainz/pacer", () => ({
 
 const { createListenBrainzProvider, clearSimilarityCacheForTesting } =
   await import("@/lib/providers/discovery/listenbrainz");
-const { lookupArtist, searchArtists, clearMusicBrainzCachesForTesting } =
-  await import("@/lib/providers/musicbrainz/client");
+const {
+  browseReleaseGroups,
+  lookupArtist,
+  searchArtists,
+  clearMusicBrainzCachesForTesting,
+} = await import("@/lib/providers/musicbrainz/client");
 
 interface CapturedResult {
   readonly status: number | null;
@@ -43,6 +47,12 @@ interface Evidence {
   readonly musicBrainzLookup: readonly {
     label: string;
     mbid: string;
+    result: CapturedResult;
+  }[];
+  readonly musicBrainzReleaseGroupBrowse: readonly {
+    label: string;
+    mbid: string;
+    offset: number;
     result: CapturedResult;
   }[];
   readonly listenBrainzSimilarArtists: readonly {
@@ -74,6 +84,40 @@ function replay(
   });
 }
 
+/**
+ * Serves a recorded artist lookup, and recorded browse pages when the adapter
+ * escalates.
+ *
+ * `lookupArtist` pages the browse endpoint whenever the lookup returns exactly
+ * 25 release groups, because that is MusicBrainz's silent cap and 25 could mean
+ * either "25 groups" or "the first 25 of 573". Several recorded fixtures sit
+ * exactly on it, so a single-response stub would feed an artist payload to the
+ * browse parser.
+ */
+function replayLookupWithBrowse(captured: CapturedResult) {
+  const browsePages = evidence.musicBrainzReleaseGroupBrowse.filter(
+    (entry) => entry.result.ok,
+  );
+
+  return vi.fn(async (input: RequestInfo | URL) => {
+    const url = String(input);
+
+    if (!url.includes("/ws/2/release-group?")) {
+      return replay(captured);
+    }
+
+    const offset = Number(/offset=(\d+)/.exec(url)?.[1] ?? "0");
+    const page =
+      browsePages.find((entry) => entry.offset === offset) ?? browsePages[0];
+
+    if (!page) {
+      throw new Error("No recorded browse evidence to replay.");
+    }
+
+    return replay(page.result);
+  });
+}
+
 beforeEach(() => {
   // Each recorded response must reach the adapter, not a cached earlier one.
   clearMusicBrainzCachesForTesting();
@@ -92,6 +136,56 @@ describe("evidence file", () => {
     expect(evidence.listenBrainzSimilarArtists.length).toBeGreaterThanOrEqual(
       3,
     );
+  });
+});
+
+describe("MusicBrainz release-group browse against recorded responses", () => {
+  const pages = evidence.musicBrainzReleaseGroupBrowse.filter(
+    (entry) => entry.result.ok,
+  );
+
+  it("has recorded evidence for a prolific artist", () => {
+    // The endpoint exists in production precisely because the lookup subquery
+    // truncates at 25, so it needs drift cover of its own.
+    expect(pages.length).toBeGreaterThan(0);
+  });
+
+  it("reports a total far above the lookup cap", async () => {
+    const first = pages.find((entry) => entry.offset === 0);
+    expect(first).toBeDefined();
+
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(replay(first!.result)));
+
+    const page = await browseReleaseGroups({
+      artistMbid: first!.mbid,
+      limit: 100,
+      offset: 0,
+    });
+
+    expect(page.total).toBeGreaterThan(100);
+    expect(page.releases.length).toBeGreaterThan(0);
+  });
+
+  it("parses a later page, proving offset paging is real", async () => {
+    const later = pages.find((entry) => entry.offset > 0);
+    expect(later).toBeDefined();
+
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(replay(later!.result)));
+
+    const page = await browseReleaseGroups({
+      artistMbid: later!.mbid,
+      limit: 100,
+      offset: later!.offset,
+    });
+
+    // A short final page is how the pagination loop knows it is done.
+    expect(page.releases.length).toBeGreaterThan(0);
+    expect(page.releases.length).toBeLessThan(100);
+
+    for (const release of page.releases) {
+      expect(release.mbid).toMatch(/^[0-9a-f-]{36}$/);
+      expect(release.attribution.provenance).toBe("musicbrainz");
+    }
   });
 });
 
@@ -150,7 +244,7 @@ describe("MusicBrainz lookup against recorded responses", () => {
       .filter((entry) => entry.result.ok)
       .map((entry) => [entry.label, entry] as const),
   )("parses the real %s lookup", async (_label, entry) => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(replay(entry.result)));
+    vi.stubGlobal("fetch", replayLookupWithBrowse(entry.result));
 
     const { artist, releases } = await lookupArtist(entry.mbid);
 
@@ -174,7 +268,7 @@ describe("MusicBrainz lookup against recorded responses", () => {
     let sawTagData = false;
 
     for (const entry of evidence.musicBrainzLookup.filter((e) => e.result.ok)) {
-      vi.stubGlobal("fetch", vi.fn().mockResolvedValue(replay(entry.result)));
+      vi.stubGlobal("fetch", replayLookupWithBrowse(entry.result));
       const { artist } = await lookupArtist(entry.mbid);
       if (artist.genres.length > 0 || artist.tags.length > 0) sawTagData = true;
     }

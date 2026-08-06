@@ -12,9 +12,16 @@ import type { CanonicalArtist } from "@/types/music";
 export function ArtistHeader({
   artist,
   releaseCount,
+  releasesComplete = true,
 }: {
   readonly artist: CanonicalArtist;
+  /**
+   * MusicBrainz's own total, not the number of records fetched. These differed
+   * silently before: the lookup subquery caps at 25, so this read "25 release
+   * groups" for an artist with 573.
+   */
   readonly releaseCount: number;
+  readonly releasesComplete?: boolean;
 }) {
   const facts = [
     artist.type,
@@ -57,7 +64,14 @@ export function ArtistHeader({
           {releaseCount > 0 ? (
             <div className="flex gap-2">
               <dt className="text-[var(--muted-dim)]">Release groups</dt>
-              <dd className="text-[var(--foreground)]">{releaseCount}</dd>
+              <dd className="text-[var(--foreground)]">
+                {releaseCount.toLocaleString()}
+                {releasesComplete ? null : (
+                  <span className="ml-2 text-xs text-[var(--amber-soft)]">
+                    partially retrieved
+                  </span>
+                )}
+              </dd>
             </div>
           ) : null}
         </dl>

@@ -91,6 +91,14 @@ if (live) {
 /** A real, stable MusicBrainz artist: Portishead. */
 const PORTISHEAD_MBID = "8f6bd1e4-fbe1-4f50-aa9b-94c450ec0f11";
 
+/**
+ * Nirvana: 573 release groups against Portishead's 25.
+ *
+ * Portishead sits exactly on the lookup subquery's silent cap, which is why
+ * every earlier live check passed while prolific artists were being truncated.
+ */
+const NIRVANA_MBID = "5b11f4ce-a62d-471e-81fc-a69a8278c7da";
+
 describe.runIf(live)("live provider factories", () => {
   it("returns the real MusicBrainz client when fixtures are off", async () => {
     const { areProviderFixturesEnabled } =
@@ -142,6 +150,35 @@ describe.runIf(live)("live provider factories", () => {
     expect(releases.length).toBeGreaterThan(0);
     expect(artist.attribution.sourceUrl).toContain("musicbrainz.org");
   }, 30_000);
+
+  it("retrieves a prolific artist's whole discography, not the first 25", async () => {
+    const { getMusicBrainzClient } =
+      await import("@/lib/providers/musicbrainz");
+
+    const { releases, releaseGroupTotal, releasesComplete } =
+      await getMusicBrainzClient().lookupArtist(NIRVANA_MBID);
+
+    // The regression, against the live service rather than a stub.
+    expect(releaseGroupTotal).toBeGreaterThan(100);
+    expect(releases.length).toBe(releaseGroupTotal);
+    expect(releasesComplete).toBe(true);
+
+    // Truncation changed which albums existed, not just how many: a partial
+    // fetch of Nirvana is mostly compilations. Across all 573 groups the
+    // filter finds the three studio albums that actually exist, which is both
+    // the correct answer and one no truncated fetch reliably reaches.
+    const studioTitles = releases
+      .filter(
+        (release) =>
+          release.primaryType === "Album" &&
+          release.secondaryTypes.length === 0,
+      )
+      .map((release) => release.title.toLowerCase());
+
+    expect(studioTitles.length).toBeGreaterThanOrEqual(3);
+    expect(studioTitles).toContain("nevermind");
+    expect(studioTitles).toContain("in utero");
+  }, 120_000);
 
   it("returns the real discovery provider with a non-fixture algorithm", async () => {
     const { getDiscoveryProvider } = await import("@/lib/providers/discovery");

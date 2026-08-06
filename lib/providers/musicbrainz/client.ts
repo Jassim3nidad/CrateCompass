@@ -555,6 +555,160 @@ const artistLookupSchema = z.object({
 export interface CanonicalArtistWithDiscography {
   readonly artist: CanonicalArtist;
   readonly releases: readonly DiscographyRelease[];
+  /**
+   * How many release groups MusicBrainz holds for this artist, which is not
+   * necessarily how many are in `releases` — see `releasesComplete`.
+   */
+  readonly releaseGroupTotal: number;
+  /**
+   * False only when an artist has more release groups than
+   * `MAX_RELEASE_GROUP_PAGES` can retrieve. Callers that state a count must
+   * check this: presenting a truncated list as a whole discography is the
+   * exact failure this field exists to prevent.
+   */
+  readonly releasesComplete: boolean;
+}
+
+/**
+ * The cap MusicBrainz applies to the `release-groups` lookup subquery.
+ *
+ * It is silent: an artist with 573 release groups returns 25 with no indication
+ * that anything was withheld. That is how a false count reached the artist page
+ * and a truncated album list reached playlist building.
+ */
+const LOOKUP_RELEASE_GROUP_CAP = 25;
+
+const BROWSE_PAGE_SIZE = 100;
+
+/**
+ * Safety bound on pagination, in pages.
+ *
+ * Real artists are comfortably inside it — Nirvana's 573 release groups are six
+ * requests. It exists for catalogue placeholders: the "Various Artists" entity
+ * has 288,991 release groups, which at one request per second is roughly
+ * three-quarters of an hour. Those entities are not artists, and seed ranking
+ * already excludes them, but a listener can still navigate to one directly.
+ *
+ * When the bound engages, `releasesComplete` is false and the interface says so
+ * with real numbers rather than pretending the list is whole.
+ */
+const MAX_RELEASE_GROUP_PAGES = 10;
+
+interface RawReleaseGroup {
+  readonly id: string;
+  readonly title: string;
+  readonly "primary-type"?: string | null | undefined;
+  readonly "secondary-types"?: readonly string[] | undefined;
+  readonly "first-release-date"?: string | null | undefined;
+  readonly disambiguation?: string | undefined;
+  readonly genres?: readonly { readonly name: string }[] | undefined;
+  readonly tags?: readonly { readonly name: string }[] | undefined;
+}
+
+/** One mapper for both retrieval paths, so they cannot drift apart. */
+function toDiscographyRelease(group: RawReleaseGroup): DiscographyRelease {
+  return {
+    mbid: asMusicBrainzId(group.id),
+    title: group.title,
+    primaryType: group["primary-type"] ?? null,
+    secondaryTypes: [...(group["secondary-types"] ?? [])],
+    firstReleaseDate: parsePartialDate(group["first-release-date"]),
+    disambiguation: group.disambiguation || null,
+    genres: toNames(group.genres),
+    tags: toNames(group.tags),
+    attribution: releaseAttribution(group.id),
+  };
+}
+
+const browseReleaseGroupSchema = z.object({
+  "release-group-count": z.number(),
+  "release-groups": z.array(
+    z.object({
+      id: z.string().min(1),
+      title: z.string().min(1),
+      "primary-type": z.string().nullable().optional(),
+      "secondary-types": z.array(z.string()).optional(),
+      "first-release-date": z.string().nullable().optional(),
+      disambiguation: z.string().optional(),
+      genres: namedTagSchema,
+      tags: namedTagSchema,
+    }),
+  ),
+});
+
+export interface ReleaseGroupPage {
+  readonly releases: readonly DiscographyRelease[];
+  readonly total: number;
+}
+
+/**
+ * One page of an artist's release groups, with the true total.
+ *
+ * The browse endpoint is the only way to learn how many release groups an
+ * artist actually has; the lookup subquery reports nothing.
+ */
+export async function browseReleaseGroups(input: {
+  readonly artistMbid: string;
+  readonly limit?: number;
+  readonly offset?: number;
+}): Promise<ReleaseGroupPage> {
+  const parameters = new URLSearchParams({
+    artist: input.artistMbid,
+    inc: "genres tags",
+    limit: String(Math.min(Math.max(input.limit ?? BROWSE_PAGE_SIZE, 1), 100)),
+    offset: String(Math.max(input.offset ?? 0, 0)),
+    fmt: "json",
+  });
+
+  const payload = await request(
+    `/ws/2/release-group?${parameters}`,
+    "release-group.browse",
+  );
+  const parsed = browseReleaseGroupSchema.safeParse(payload);
+
+  if (!parsed.success) {
+    throw new MusicBrainzError(
+      "invalid-response",
+      "MusicBrainz returned an unexpected release-group browse response.",
+    );
+  }
+
+  return {
+    total: parsed.data["release-group-count"],
+    releases: parsed.data["release-groups"].map(toDiscographyRelease),
+  };
+}
+
+async function listAllReleaseGroups(artistMbid: string): Promise<{
+  readonly releases: readonly DiscographyRelease[];
+  readonly total: number;
+  readonly complete: boolean;
+}> {
+  const collected: DiscographyRelease[] = [];
+  let total = 0;
+
+  for (let page = 0; page < MAX_RELEASE_GROUP_PAGES; page += 1) {
+    const result = await browseReleaseGroups({
+      artistMbid,
+      limit: BROWSE_PAGE_SIZE,
+      offset: page * BROWSE_PAGE_SIZE,
+    });
+
+    total = result.total;
+    collected.push(...result.releases);
+
+    if (collected.length >= total || result.releases.length === 0) {
+      return { releases: collected, total, complete: true };
+    }
+  }
+
+  logger.warn({
+    event: "musicbrainz.release_groups_truncated",
+    retrieved: collected.length,
+    total,
+  });
+
+  return { releases: collected, total, complete: false };
 }
 
 export async function lookupArtist(
@@ -606,16 +760,40 @@ async function lookupArtistUncached(
       tags: toNames(data.tags),
       attribution: attribution(data.id),
     },
-    releases: (data["release-groups"] ?? []).map((group) => ({
-      mbid: asMusicBrainzId(group.id),
-      title: group.title,
-      primaryType: group["primary-type"] ?? null,
-      secondaryTypes: group["secondary-types"] ?? [],
-      firstReleaseDate: parsePartialDate(group["first-release-date"]),
-      disambiguation: group.disambiguation || null,
-      genres: toNames(group.genres),
-      tags: toNames(group.tags),
-      attribution: releaseAttribution(group.id),
-    })),
+    ...(await resolveReleaseGroups(mbid, data["release-groups"] ?? [])),
+  };
+}
+
+/**
+ * The release groups for an artist, complete.
+ *
+ * The lookup subquery is used first because it costs nothing extra — it comes
+ * back with the artist. Only when it returns exactly the cap does this pay for
+ * pagination, so the common case stays at one request and prolific artists get
+ * a correct answer instead of a quiet truncation.
+ */
+async function resolveReleaseGroups(
+  mbid: string,
+  fromLookup: readonly RawReleaseGroup[],
+): Promise<{
+  readonly releases: readonly DiscographyRelease[];
+  readonly releaseGroupTotal: number;
+  readonly releasesComplete: boolean;
+}> {
+  if (fromLookup.length < LOOKUP_RELEASE_GROUP_CAP) {
+    const releases = fromLookup.map(toDiscographyRelease);
+    return {
+      releases,
+      releaseGroupTotal: releases.length,
+      releasesComplete: true,
+    };
+  }
+
+  const all = await listAllReleaseGroups(mbid);
+
+  return {
+    releases: all.releases,
+    releaseGroupTotal: all.total,
+    releasesComplete: all.complete,
   };
 }
