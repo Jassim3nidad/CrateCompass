@@ -18,6 +18,34 @@ export const AI_LIMITS = {
   requestTimeoutMs: 30_000,
 } as const;
 
+/**
+ * Operations that tolerate a wider burst than the default four a minute.
+ *
+ * The two windows do different jobs. The per-minute window stops runaway loops
+ * and double-submits; the daily cap is what bounds spend. Conversation is the
+ * case the burst window was never sized for — four questions inside a minute is
+ * ordinary behaviour, not abuse — so the tolerance is raised there and the
+ * daily ceiling is left alone. Maximum spend per user does not change.
+ *
+ * One consequence worth knowing: `claim_ai_usage` counts every event in the
+ * window, not just this operation's. Raising the figure here means "allow this
+ * operation to proceed with up to N recent AI calls of any kind behind it", so
+ * ten rapid questions will then block a mood parse, which still allows four.
+ * The burst window is shared; the operation states what it will accept.
+ */
+const PER_MINUTE_BY_OPERATION: Readonly<Record<string, number>> = {
+  answerDiscographyQuestion: 10,
+};
+
+export function perMinuteLimitFor(operation: string): number {
+  // `Object.hasOwn` rather than a bare lookup: the operation name reaches here
+  // from a call site, and "constructor" would otherwise resolve to a function
+  // off the prototype chain and be handed to Postgres as a limit.
+  return Object.hasOwn(PER_MINUTE_BY_OPERATION, operation)
+    ? (PER_MINUTE_BY_OPERATION[operation] ?? AI_LIMITS.perUserPerMinute)
+    : AI_LIMITS.perUserPerMinute;
+}
+
 export class AiUsageLimitError extends Error {
   readonly scope: "daily" | "burst";
 
@@ -55,7 +83,7 @@ export async function claimAiUsage(input: {
     p_provider: input.provider,
     p_operation: input.operation,
     p_daily_limit: AI_LIMITS.perUserPerDay,
-    p_per_minute_limit: AI_LIMITS.perUserPerMinute,
+    p_per_minute_limit: perMinuteLimitFor(input.operation),
   });
 
   if (error) {

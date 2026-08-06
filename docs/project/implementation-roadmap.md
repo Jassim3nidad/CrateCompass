@@ -220,6 +220,33 @@ Spotify's own ordering remains excluded as a ranking source: that decision is
 recorded in `docs/product/phase-7-scope.md` and is a compliance position, not a
 technical preference.
 
+### Tracked follow-up: general draft resumption
+
+Resuming a draft is implemented for the reconnect round trip only. The two
+settings that are not columns on `generated_playlists` — requested length and
+explicit-content preference — travel in the return path (`features/mood/resume.ts`),
+which is faithful for a round trip the application itself starts and nothing
+wider.
+
+Resuming a draft from a bookmark, a draft list, or a session days later would
+need those as columns, plus a way to find a draft without already holding its
+identifier. Phase 9 owns the library and history surfaces where that belongs.
+Adding the columns earlier would be a migration with no consumer.
+
+### Tracked follow-up: remaining AI quota display
+
+Decision 2 of Phase 8 approved showing a listener how much of their daily AI
+allowance is left. The limit change itself needed no migration —
+`claim_ai_usage` already takes both windows as arguments, so
+`perMinuteLimitFor` in `lib/ai/limits.ts` was enough — but *reading* the
+remaining count does. `private.ai_usage_events` is not reachable by
+`service_role`, and the only functions over it are `claim_ai_usage` and
+`purge_ai_usage_events`, neither of which reports a count without consuming a
+slot.
+
+A display therefore needs a new `security definer` RPC, and there is no surface
+to show it on until the Phase 8 Q&A panel exists. Both land together.
+
 ### Exit gate
 
 Approve Phase 8 separately.

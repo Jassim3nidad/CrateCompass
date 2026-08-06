@@ -20,6 +20,11 @@ const SERVICE_ROLE_KEY =
   process.env.LOCAL_SUPABASE_SERVICE_ROLE_KEY ??
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU";
 
+const ANON_KEY =
+  process.env.LOCAL_SUPABASE_ANON_KEY ??
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+  "";
+
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: {
     autoRefreshToken: false,
@@ -182,6 +187,109 @@ test("the staged progress names the step that is running", async ({ page }) => {
   await expect(
     page.getByRole("button", { name: /^Remove/ }).first(),
   ).toBeVisible({ timeout: 60_000 });
+});
+
+/**
+ * Reads the listener's own draft identifier.
+ *
+ * Deliberately not the admin client: `service_role` holds no table grants, so
+ * Row Level Security is the only way in, and getting the row back is itself
+ * evidence that the draft belongs to the account that made it.
+ */
+async function readOwnDraftId(): Promise<string> {
+  const owner = createClient(SUPABASE_URL, ANON_KEY, {
+    auth: { persistSession: false },
+  });
+
+  const { error: signInError } = await owner.auth.signInWithPassword({
+    email,
+    password: PASSWORD,
+  });
+
+  if (signInError) {
+    throw new Error(
+      `Could not sign in to read the draft: ${signInError.message}`,
+    );
+  }
+
+  const { data, error } = await owner
+    .from("generated_playlists")
+    .select("id")
+    .eq("status", "draft")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data) {
+    throw new Error(
+      `No draft row was readable: ${error?.message ?? "none found"}`,
+    );
+  }
+
+  return data.id as string;
+}
+
+test("a draft survives the navigation a Spotify reconnect forces", async ({
+  page,
+}) => {
+  // The defect this covers: the reconnect prompt promised the draft would be
+  // waiting, while the workflow held it in component state that a full-document
+  // navigation to Spotify destroys. The row always survived; nothing pointed
+  // back at it.
+  await signIn(page);
+
+  await page
+    .getByLabel("What are you listening for?")
+    .fill("hazy coastal post-rock for a rainy commute");
+  await page.getByRole("button", { name: /Interpret this mood/ }).click();
+  await expect(
+    page.getByRole("heading", { name: /Choose the artist/ }),
+  ).toBeVisible({ timeout: 30_000 });
+
+  await page
+    .getByRole("button", { name: /Harbour Lantern/ })
+    .first()
+    .click();
+
+  const removeButtons = page.getByRole("button", { name: /^Remove/ });
+  await expect(removeButtons.first()).toBeVisible({ timeout: 60_000 });
+  const trackCount = await removeButtons.count();
+
+  const playlistId = await readOwnDraftId();
+
+  // A fresh document at the path the reconnect builds. Nothing the browser held
+  // a moment ago is still in memory.
+  await page.goto(`/mood?draft=${playlistId}&length=20&explicit=avoid`);
+
+  await expect(
+    page.getByRole("button", { name: /Create private playlist in Spotify/ }),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Remove/ })).toHaveCount(
+    trackCount,
+  );
+  await expect(page.getByLabel("What are you listening for?")).toHaveValue(
+    "hazy coastal post-rock for a rainy commute",
+  );
+
+  // The setting that is carried rather than stored. Losing it would silently
+  // reverse a listener's choice to exclude explicit tracks.
+  await expect(page.getByLabel("Exclude explicit tracks")).toBeChecked();
+});
+
+test("an unresumable draft identifier gives a fresh workflow, not an error", async ({
+  page,
+}) => {
+  await signIn(page);
+
+  // Someone else's draft, a deleted one, and a hand-typed identifier are
+  // indistinguishable from here, and none of them is worth an error screen.
+  await page.goto("/mood?draft=00000000-0000-4000-8000-000000000000");
+
+  await expect(
+    page.getByRole("heading", { name: "Describe the moment" }),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Remove/ })).toHaveCount(0);
+  await expect(page.getByLabel("What are you listening for?")).toHaveValue("");
 });
 
 test("@a11y the authenticated mood workflow has no violations", async ({

@@ -1,6 +1,6 @@
-# Re-authorization copy — awaiting sign-off
+# Re-authorization copy
 
-Status: **draft, not signed off**  
+Status: **signed off, 2026-08-06**  
 Date: 2026-08-05  
 Implemented in: `features/spotify/reauthorization-copy.ts` (single source; the
 interface renders these strings verbatim)
@@ -77,9 +77,29 @@ Three rules the wording follows:
 - No claim that the permission is required to use CrateCompass. It is required
   for one feature.
 
-## Open point for review
+## Resolved: the draft-survival promise
 
-The mood-flow variant promises the draft survives a reconnect round trip. That
-is implementable — the draft is server-side state keyed to the user — but it is
-a commitment the copy makes on the implementation's behalf. If drafts turn out
-to be session-scoped, this wording changes to "your draft is kept for now".
+The mood-flow variant promises the draft survives a reconnect round trip. When
+this was written that was a commitment the copy made on the implementation's
+behalf, and the implementation did not honour it. Traced on 2026-08-06, it
+failed at three points:
+
+1. `connectSpotify` hardcoded `redirectPath` to `/settings/connections`, so the
+   listener never came back to the mood page at all.
+2. The reconnect-required branch rendered a "Manage connections" link. The
+   `[Reconnect Spotify] [Keep editing]` controls this document describes did not
+   exist.
+3. `MoodWorkflow` took no props and initialised every state slot to empty, so
+   even arriving at `/mood` produced a blank workflow. The draft row survived;
+   nothing pointed back at it.
+
+Rather than downgrade the wording, the gap was closed: authorization now carries
+a sanitised return path, the page rehydrates from the draft row, and both
+controls exist. The sentence is accurate as written and needs no change.
+
+Two settings — requested length and explicit-content preference — are carried in
+the return path rather than read from the row, because `generated_playlists`
+does not store them and defaulting them would silently reverse a listener's
+choice. See `features/mood/resume.ts`. Resuming a draft outside this round trip
+would want columns instead; that is a tracked follow-up, not a promise this copy
+makes.

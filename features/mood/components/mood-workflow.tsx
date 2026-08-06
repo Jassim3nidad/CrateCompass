@@ -1,7 +1,6 @@
 "use client";
 
 import { ExternalLink, Sparkles, TriangleAlert, X } from "lucide-react";
-import Link from "next/link";
 import { useId, useRef, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -28,7 +27,9 @@ import {
   WorkflowProgress,
   type WorkflowStage,
 } from "@/features/mood/components/workflow-progress";
+import { buildResumePath, type ResumedDraft } from "@/features/mood/resume";
 import { createPlaylistAction } from "@/features/playlists/actions";
+import { reconnectSpotify } from "@/features/spotify/actions";
 import type { CreationResult } from "@/features/mood/state";
 import { PLAYLIST_LENGTH } from "@/lib/mood/controls";
 
@@ -44,21 +45,44 @@ import { PLAYLIST_LENGTH } from "@/lib/mood/controls";
  * Nothing reaches Spotify until the final confirmation, and the idempotency key
  * is minted once per draft so a double-click or a refresh cannot produce two
  * playlists.
+ *
+ * `resumed` is present when the listener has come back from a Spotify
+ * reconnect. Connecting is a navigation to another origin, so none of this
+ * state survives it; the server reloads the draft from its row and hands it
+ * back here, which is what makes the reconnect prompt's promise true.
  */
-export function MoodWorkflow() {
+export function MoodWorkflow({
+  resumed = null,
+}: {
+  readonly resumed?: ResumedDraft | null;
+}) {
   const moodId = useId();
   const lengthId = useId();
-  const [moodText, setMoodText] = useState("");
-  const [length, setLength] = useState<number>(PLAYLIST_LENGTH.default);
-  const [isPublic, setIsPublic] = useState(false);
-  const [avoidExplicit, setAvoidExplicit] = useState(false);
+  const [moodText, setMoodText] = useState(resumed?.moodText ?? "");
+  const [length, setLength] = useState<number>(
+    resumed?.draft.status === "ready"
+      ? resumed.draft.controls.length
+      : PLAYLIST_LENGTH.default,
+  );
+  const [isPublic, setIsPublic] = useState(
+    resumed?.draft.status === "ready" ? resumed.draft.controls.isPublic : false,
+  );
+  const [avoidExplicit, setAvoidExplicit] = useState(
+    resumed?.draft.status === "ready"
+      ? resumed.draft.controls.explicitContent === "avoid"
+      : false,
+  );
   const [parsed, setParsed] = useState<MoodParseResult | null>(null);
-  const [draft, setDraft] = useState<DraftResult | null>(null);
+  const [draft, setDraft] = useState<DraftResult | null>(
+    resumed?.draft ?? null,
+  );
   const [creation, setCreation] = useState<CreationResult | null>(null);
   const [announcement, setAnnouncement] = useState("");
   // Set from whichever action is actually in flight, so the indicator states a
   // fact rather than animating a guess.
-  const [stage, setStage] = useState<WorkflowStage>("idle");
+  const [stage, setStage] = useState<WorkflowStage>(
+    resumed?.draft.status === "ready" ? "draft-ready" : "idle",
+  );
   const [pending, startTransition] = useTransition();
   const idempotencyKey = useRef<string | null>(null);
 
@@ -166,6 +190,32 @@ export function MoodWorkflow() {
               ? "That playlist was already created."
               : result.message,
       );
+    });
+  }
+
+  /**
+   * Leaves for Spotify carrying the draft in the return path.
+   *
+   * The draft row is already written, so nothing here needs saving first; what
+   * the path carries is the identity to come back to, plus the two settings
+   * that belong to this attempt rather than to the stored draft.
+   */
+  function reconnect() {
+    if (draft?.status !== "ready") return;
+
+    const returnTo = buildResumePath({
+      playlistId: draft.playlistId,
+      controls,
+    });
+
+    startTransition(async () => {
+      // A successful start redirects to Spotify and never returns here. Only a
+      // refusal to begin comes back with a message.
+      const result = await reconnectSpotify(returnTo);
+
+      if (result.status === "error" && result.message) {
+        setAnnouncement(result.message);
+      }
     });
   }
 
@@ -444,12 +494,29 @@ export function MoodWorkflow() {
         </Card>
       ) : null}
 
-      {creation ? <CreationOutcome result={creation} /> : null}
+      {creation ? (
+        <CreationOutcome
+          result={creation}
+          pending={pending}
+          onReconnect={reconnect}
+          onKeepEditing={() => setCreation(null)}
+        />
+      ) : null}
     </div>
   );
 }
 
-function CreationOutcome({ result }: { readonly result: CreationResult }) {
+function CreationOutcome({
+  result,
+  pending,
+  onReconnect,
+  onKeepEditing,
+}: {
+  readonly result: CreationResult;
+  readonly pending: boolean;
+  readonly onReconnect: () => void;
+  readonly onKeepEditing: () => void;
+}) {
   if (result.status === "created" || result.status === "already-created") {
     return (
       <Card role="status">
@@ -520,12 +587,30 @@ function CreationOutcome({ result }: { readonly result: CreationResult }) {
         {result.message}
       </p>
       {needsConnection ? (
-        <Link
-          href="/settings/connections"
-          className="mt-3 inline-block rounded text-sm underline underline-offset-2 hover:text-[var(--foreground)] focus-visible:ring-2 focus-visible:ring-[var(--focus)] focus-visible:outline-none"
-        >
-          Manage connections
-        </Link>
+        // Both controls are real: the draft is kept either way, so declining
+        // the permission has to be as easy as granting it.
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <Button
+            type="button"
+            variant="accent"
+            onClick={onReconnect}
+            disabled={pending}
+          >
+            {pending
+              ? "Redirecting to Spotify…"
+              : result.status === "spotify-not-connected"
+                ? "Connect Spotify"
+                : "Reconnect Spotify"}
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onKeepEditing}
+            disabled={pending}
+          >
+            Keep editing
+          </Button>
+        </div>
       ) : null}
     </Card>
   );

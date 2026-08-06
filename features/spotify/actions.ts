@@ -37,10 +37,18 @@ import type {
 
 const CONNECTIONS_PATH = "/settings/connections";
 
-// Neither action reads the previous state or any form field: connecting and
-// disconnecting are whole-account operations with no inputs. They stay
-// compatible with `useActionState`, which simply ignores the unused arguments.
-export async function connectSpotify(): Promise<SpotifyActionState> {
+/**
+ * Starts an authorization round trip that returns to `returnTo`.
+ *
+ * The path is sanitised here rather than trusted, because a caller can be a
+ * client component. `getSafeReturnPath` rejects anything that is not a
+ * same-origin relative path, which is what stops this becoming an open
+ * redirect; it preserves the query string, which is what lets the mood flow
+ * carry a draft identity across the round trip.
+ */
+async function startSpotifyAuthorization(
+  returnTo: string,
+): Promise<SpotifyActionState> {
   const { user } = await getAuthenticatedUser();
 
   if (!isSpotifyConfigured()) {
@@ -73,7 +81,7 @@ export async function connectSpotify(): Promise<SpotifyActionState> {
         },
         resolveEncryptionKey(keyVersion),
       ),
-      redirectPath: CONNECTIONS_PATH,
+      redirectPath: getSafeReturnPath(returnTo, CONNECTIONS_PATH),
       expiresAt: new Date(Date.now() + OAUTH_TRANSACTION_TTL_MS),
     });
   } catch {
@@ -86,6 +94,27 @@ export async function connectSpotify(): Promise<SpotifyActionState> {
   }
 
   redirect(buildAuthorizeUrl({ state, codeChallenge: challenge }));
+}
+
+// Neither action reads the previous state or any form field: connecting and
+// disconnecting are whole-account operations with no inputs. They stay
+// compatible with `useActionState`, which simply ignores the unused arguments.
+export async function connectSpotify(): Promise<SpotifyActionState> {
+  return startSpotifyAuthorization(CONNECTIONS_PATH);
+}
+
+/**
+ * Reconnect from somewhere that has work in progress.
+ *
+ * Separate from `connectSpotify` because it takes an argument, and the
+ * connections page binds `connectSpotify` to `useActionState`, which supplies
+ * its own two. The mood flow calls this one directly with the draft it wants to
+ * come back to.
+ */
+export async function reconnectSpotify(
+  returnTo: string,
+): Promise<SpotifyActionState> {
+  return startSpotifyAuthorization(returnTo);
 }
 
 const SPOTIFY_ARTIST_URL = "https://open.spotify.com/artist/";

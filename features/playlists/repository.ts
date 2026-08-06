@@ -32,6 +32,8 @@ export interface StoredDraft {
   readonly playlistId: string;
   readonly title: string;
   readonly description: string;
+  /** The listener's own words, so a resumed draft can show what was asked. */
+  readonly moodText: string;
   readonly isPublic: boolean;
   readonly status: string;
   readonly tracks: readonly (DraftTrackInput & {
@@ -114,7 +116,7 @@ export async function readDraft(input: {
 
   const { data, error } = await supabase
     .from("generated_playlists")
-    .select("id, name, description, is_public, status")
+    .select("id, name, description, mood_text, is_public, status")
     .eq("user_id", input.userId)
     .eq("id", input.playlistId)
     .maybeSingle();
@@ -136,6 +138,7 @@ export async function readDraft(input: {
     playlistId: data.id,
     title: data.name,
     description: data.description ?? "",
+    moodText: data.mood_text ?? "",
     isPublic: data.is_public,
     status: data.status,
     tracks: (tracks ?? []).map((track) => ({
