@@ -41,6 +41,8 @@ export const FIXTURE_SEEDS = {
   providerDown: MBID.brokenSignal,
   /** 40 release groups: above the silent 25-group lookup cap. */
   prolific: "f1000000-0000-4000-8000-000000000005",
+  /** Retrieval genuinely incomplete, so the partial signals are reachable. */
+  cataloguePlaceholder: "f1000000-0000-4000-8000-000000000006",
 } as const;
 
 function attribution(mbid: string, kind: "artist" | "release-group") {
@@ -67,6 +69,15 @@ interface FixtureArtist {
     readonly secondaryTypes: readonly string[];
     readonly firstReleaseDate: string | null;
   }[];
+  /**
+   * MusicBrainz's own total, when it exceeds what retrieval could hold.
+   *
+   * Present only on the catalogue-placeholder fixture. Without an artist whose
+   * retrieval is genuinely incomplete there is no way to exercise the partial
+   * discography badge, and an indicator nothing tests is an indicator that can
+   * silently stop rendering.
+   */
+  readonly declaredTotal?: number;
 }
 
 const SIMILAR_NAMES = [
@@ -150,8 +161,39 @@ const prolificArtist: FixtureArtist = {
   }),
 };
 
+/**
+ * A catalogue placeholder, mirroring the "Various Artists" entity.
+ *
+ * That entity holds 288,991 release groups, so retrieval stops at the 10-page
+ * safety bound and the list on screen is genuinely partial. This fixture exists
+ * so the partial-discography badge, the "showing N of M" caption, and the
+ * refusal to answer a counting question are all reachable in a browser test.
+ */
+const PLACEHOLDER_MBID = "f1000000-0000-4000-8000-000000000006";
+
+const placeholderArtist: FixtureArtist = {
+  mbid: PLACEHOLDER_MBID,
+  name: "Assorted Performers",
+  sortName: "Assorted Performers",
+  disambiguation: "catalogue placeholder fixture",
+  type: "Other",
+  country: null,
+  genres: [],
+  tags: [],
+  releases: Array.from({ length: 12 }, (_, index) => ({
+    mbid: `f3000000-0000-4000-8000-${String(700 + index).padStart(12, "0")}`,
+    title: `Assorted Performers — Volume ${index + 1}`,
+    primaryType: "Album",
+    secondaryTypes: ["Compilation"],
+    firstReleaseDate: `${1990 + index}`,
+  })),
+  // Far beyond what was retrieved, exactly as the real placeholder behaves.
+  declaredTotal: 288_991,
+};
+
 const artists: readonly FixtureArtist[] = [
   prolificArtist,
+  placeholderArtist,
   {
     mbid: MBID.harbourLanternGroup,
     name: "Harbour Lantern",
@@ -411,12 +453,13 @@ export function fixtureLookup(
   }
 
   const releases = toReleases(artist);
+  const total = artist.declaredTotal ?? releases.length;
 
   return {
     artist: toCanonical(artist),
     releases,
-    releaseGroupTotal: releases.length,
-    releasesComplete: true,
+    releaseGroupTotal: total,
+    releasesComplete: total === releases.length,
   };
 }
 

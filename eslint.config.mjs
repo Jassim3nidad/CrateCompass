@@ -56,6 +56,11 @@ const eslintConfig = defineConfig([
       "features/discovery/**/*.ts",
       "lib/mood/**/*.ts",
       "features/mood/**/*.ts",
+      // Phase 8 joins the same rule: the discography explorer builds AI input
+      // from MusicBrainz records, so it must be structurally unable to reach a
+      // Spotify adapter. Open-in-Spotify on that page resolves separately.
+      "lib/discography/**/*.ts",
+      "features/discography/**/*.ts",
     ],
     rules: {
       "no-restricted-imports": [
@@ -65,7 +70,7 @@ const eslintConfig = defineConfig([
             {
               group: ["**/providers/spotify/**", "@/lib/providers/spotify/*"],
               message:
-                "Discovery and mood modules must not import Spotify provider modules. Spotify resolution belongs in features/spotify and features/playlists, neither of which imports an AI module.",
+                "Discovery, mood and discography modules must not import Spotify provider modules. Spotify resolution belongs in features/spotify and features/playlists, neither of which imports an AI module.",
             },
           ],
         },

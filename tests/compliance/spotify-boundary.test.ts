@@ -167,6 +167,38 @@ describe("repository scan", () => {
     expect(offenders).toEqual([]);
   });
 
+  it("keeps discography modules free of Spotify imports", () => {
+    // Phase 8 builds AI input from MusicBrainz records. Spotify must not be
+    // reachable from that tree even transitively through a convenience import,
+    // so this is checked by scanning the source rather than by trusting the
+    // lint configuration to have been applied.
+    const offenders = sources
+      .filter(
+        (source) =>
+          source.path.startsWith("lib/discography/") ||
+          source.path.startsWith("features/discography/"),
+      )
+      .filter((source) =>
+        /from\s+["'][^"']*providers\/spotify/.test(source.contents),
+      )
+      .map((source) => source.path);
+
+    expect(offenders).toEqual([]);
+  });
+
+  it("keeps discography modules out of the playlist creation tree", () => {
+    // The counterpart direction: nothing that resolves Spotify may pull in a
+    // module that holds retrieved MusicBrainz context destined for a model.
+    const offenders = sources
+      .filter((source) => source.path.startsWith("features/playlists/"))
+      .filter((source) =>
+        /from\s+["'][^"']*\/discography(\/|["'])/.test(source.contents),
+      )
+      .map((source) => source.path);
+
+    expect(offenders).toEqual([]);
+  });
+
   it("keeps discovery evidence modules free of Spotify imports", () => {
     // Discovery is where AI input is assembled. If a Spotify module were
     // reachable from here, the boundary would depend on the code inside these

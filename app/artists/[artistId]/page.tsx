@@ -19,9 +19,15 @@ import {
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { PhaseNotice } from "@/components/ui/phase-notice";
+import { QuestionPanel } from "@/features/discography/components/question-panel";
+import { ReleaseTimeline } from "@/features/discography/components/release-timeline";
+import { readLatestConversation } from "@/features/discography/repository";
+import { loadDiscography } from "@/features/discography/service";
 import { ArtistHeader } from "@/features/discovery/components/artist-header";
 import { SpotifyLink } from "@/features/discovery/components/spotify-link";
 import { loadSeedArtist } from "@/features/discovery/service";
+import { readRemainingDailyUsage } from "@/lib/ai/limits";
+import { getOptionalUser } from "@/lib/supabase/auth";
 
 interface ArtistPageProps {
   readonly params: Promise<{ artistId: string }>;
@@ -74,6 +80,20 @@ export default async function ArtistPage({ params }: ArtistPageProps) {
 
   const { artist, releaseGroupTotal, releasesComplete } = seed.value;
 
+  // The same six-hour cached lookup the seed load used, so this is a second
+  // read of one retrieval rather than a second retrieval.
+  const [discography, { user }] = await Promise.all([
+    loadDiscography(artistId),
+    getOptionalUser(),
+  ]);
+
+  const [conversation, remainingQuota] = await Promise.all([
+    user
+      ? readLatestConversation({ userId: user.id, canonicalArtistId: artistId })
+      : Promise.resolve(null),
+    user ? readRemainingDailyUsage(user.id) : Promise.resolve(null),
+  ]);
+
   return (
     <div className="page-shell space-y-6">
       <ArtistHeader
@@ -94,30 +114,42 @@ export default async function ArtistPage({ params }: ArtistPageProps) {
         <SpotifyLink mbid={artist.mbid} artistName={artist.name} />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <CardTitle>Discography</CardTitle>
-                <CardDescription>
-                  MusicBrainz records {releaseGroupTotal.toLocaleString()}{" "}
-                  release group{releaseGroupTotal === 1 ? "" : "s"} for this
-                  artist.
-                </CardDescription>
+      {discography.ok ? (
+        <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <CardTitle>Discography</CardTitle>
+                  <CardDescription>
+                    Every release group MusicBrainz records, oldest first.
+                  </CardDescription>
+                </div>
+                <Disc3
+                  aria-hidden="true"
+                  className="size-6 text-[var(--electric)]"
+                />
               </div>
-              <Disc3
-                aria-hidden="true"
-                className="size-6 text-[var(--electric)]"
-              />
-            </div>
-          </CardHeader>
-          <PhaseNotice>
-            Release browsing, type filters, and grounded discography questions
-            arrive in Phase 8. Nothing has been summarised here in the meantime.
-          </PhaseNotice>
-        </Card>
+            </CardHeader>
+            <ReleaseTimeline discography={discography.value} />
+          </Card>
 
+          <QuestionPanel
+            artistMbid={artist.mbid}
+            artistName={artist.name}
+            signedIn={Boolean(user)}
+            remainingQuota={remainingQuota}
+            initialMessages={conversation?.messages ?? []}
+          />
+        </div>
+      ) : (
+        <ErrorState
+          title="The discography could not be retrieved"
+          description={discography.message}
+        />
+      )}
+
+      <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between gap-4">

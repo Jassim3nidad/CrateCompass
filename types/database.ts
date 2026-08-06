@@ -508,6 +508,10 @@ export type Database = {
         Args: never;
         Returns: number;
       };
+      read_ai_usage_remaining: {
+        Args: { p_daily_limit: number; p_user_id: string };
+        Returns: number;
+      };
       read_spotify_credentials: {
         Args: { p_user_id: string };
         Returns: {

@@ -46,6 +46,30 @@ export function perMinuteLimitFor(operation: string): number {
     : AI_LIMITS.perUserPerMinute;
 }
 
+/**
+ * How many AI requests the listener has left today.
+ *
+ * Read-only, and deliberately not part of claiming: a display that consumed a
+ * slot to render itself would penalise looking at the limiter. Returns null
+ * when the count cannot be read, so the interface omits the figure rather than
+ * inventing one — the limiter itself still fails closed regardless.
+ */
+export async function readRemainingDailyUsage(
+  userId: string,
+): Promise<number | null> {
+  const { data, error } = await createAdminClient().rpc(
+    "read_ai_usage_remaining",
+    { p_user_id: userId, p_daily_limit: AI_LIMITS.perUserPerDay },
+  );
+
+  if (error || typeof data !== "number") {
+    logger.warn({ event: "ai.usage_remaining_read_failed", code: error?.code });
+    return null;
+  }
+
+  return data;
+}
+
 export class AiUsageLimitError extends Error {
   readonly scope: "daily" | "burst";
 

@@ -180,6 +180,71 @@ describe.runIf(live)("live provider factories", () => {
     expect(studioTitles).toContain("in utero");
   }, 120_000);
 
+  it("classifies and orders a real discography the way the explorer shows it", async () => {
+    // Fixtures cannot prove this. Every secondary type in the catalog is one
+    // this repository wrote; only live data shows whether MusicBrainz's real
+    // vocabulary lands in the categories the filters offer.
+    const { getMusicBrainzClient } =
+      await import("@/lib/providers/musicbrainz");
+    const { buildDiscography, countByCategory } =
+      await import("@/lib/discography/retrieval");
+
+    const lookup = await getMusicBrainzClient().lookupArtist(NIRVANA_MBID);
+    const discography = buildDiscography(NIRVANA_MBID, lookup);
+
+    expect(discography.retrievalComplete).toBe(true);
+    expect(discography.total).toBe(lookup.releaseGroupTotal);
+
+    // A prolific catalogue must populate more than one filter, or the chips
+    // would be decoration.
+    const counts = countByCategory(discography);
+    expect(counts.album ?? 0).toBeGreaterThan(0);
+    expect(counts.compilation ?? 0).toBeGreaterThan(0);
+    expect(counts.live ?? 0).toBeGreaterThan(0);
+
+    // A live album must not be filed as a plain album. MusicBrainz records it
+    // as secondary type Live — usually with primary Album, but live data also
+    // contains Live groups with *no* primary type at all, which is why
+    // classification reads the secondary types first and why asserting on the
+    // primary type here would be asserting something untrue.
+    const liveEntries = discography.entries.filter(
+      (entry) => entry.category === "live",
+    );
+    expect(
+      liveEntries.every((entry) =>
+        entry.secondaryTypes.some((type) => type.toLowerCase() === "live"),
+      ),
+    ).toBe(true);
+
+    // The converse: nothing carrying Live may end up in the album filter.
+    expect(
+      discography.entries
+        .filter((entry) => entry.category === "album")
+        .every(
+          (entry) =>
+            !entry.secondaryTypes.some((type) => type.toLowerCase() === "live"),
+        ),
+    ).toBe(true);
+
+    // Chronological, with undated releases last rather than sorted as empty
+    // strings at the front.
+    const dated = discography.entries
+      .filter((entry) => entry.firstReleaseDate.value !== null)
+      .map((entry) => entry.firstReleaseDate.value ?? "");
+    expect([...dated]).toEqual([...dated].sort());
+
+    const firstUndated = discography.entries.findIndex(
+      (entry) => entry.firstReleaseDate.value === null,
+    );
+    if (firstUndated >= 0) {
+      expect(
+        discography.entries
+          .slice(firstUndated)
+          .every((entry) => entry.firstReleaseDate.value === null),
+      ).toBe(true);
+    }
+  }, 120_000);
+
   it("returns the real discovery provider with a non-fixture algorithm", async () => {
     const { getDiscoveryProvider } = await import("@/lib/providers/discovery");
 

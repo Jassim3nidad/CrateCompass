@@ -1,7 +1,7 @@
 # Phase 8 — Discography explorer and Q&A: implementation plan
 
-Status: **written, awaiting approval — no implementation has started**  
-Date: 2026-08-06  
+Status: **implemented and verified**  
+Date: 2026-08-06, implemented 2026-08-07  
 Decisions: [phase-8-scope.md](phase-8-scope.md) (all four closed)  
 Builds on: [phase-6-discovery.md](phase-6-discovery.md),
 [phase-7-scope.md](phase-7-scope.md),
@@ -95,7 +95,36 @@ text and is not the right place to acquire one.
 
 **This is where correctness is won or lost.** Filtering too aggressively drops
 the release holding the answer; filtering too little overruns 200 on a prolific
-artist. It gets the densest unit coverage in the phase.
+artist.
+
+Two named test cases, required rather than implied by "dense coverage":
+
+- **(a) The answer-bearing release must not be filtered out.** A question whose
+  answer lives in a release that a naive filter would discard — a live album
+  when the question names a year, a release whose title shares no term with the
+  question — asserted to be present in the selected context. This test fails if
+  selection becomes more aggressive later.
+- **(b) The 200-cap overrun.** A prolific artist whose relevant set exceeds the
+  schema bound, asserted to select exactly 200, to select them by stated
+  priority rather than by arrival order, and to report `truncated: true` so the
+  interface can say so.
+
+### Step 4a — The partial-state signal is a first-class output
+
+Selection returns two independent truth values, and neither may be swallowed:
+
+| Signal | Meaning | Source |
+| --- | --- | --- |
+| `retrievalComplete` | Whether MusicBrainz's total matches what was retrieved | `releasesComplete` from the client; false when the 10-page bound engaged |
+| `contextTruncated` | Whether the 200-release bound cut the selected context | Selection itself |
+
+These are **different failures** and are reported separately. A discography can
+be fully retrieved but truncated for one broad question, and a partial retrieval
+can still answer a narrow question completely.
+
+Counting questions ("how many studio albums") are declined deterministically
+when `retrievalComplete` is false. A count computed from an incomplete
+discography is wrong, not approximate.
 
 ### Step 5 — Citation verification
 
@@ -141,7 +170,7 @@ reports a count without consuming a slot.
 - Release detail with MusicBrainz source links.
 - Q&A panel with conversation history.
 - Suggested factual questions.
-- Missing-data notice, and the "showing N of M" partial-retrieval notice.
+- Missing-data notice, and the partial-state treatment below.
 - Remaining daily quota (decision 2), so a limit that fails closed is never a
   surprise.
 - Open-in-Spotify resolved separately and on demand, exactly as Phase 6 does.
@@ -149,16 +178,51 @@ reports a count without consuming a slot.
 All eleven required interface states, including partial-result and
 provider-unavailable.
 
+### Step 8a — Partial-state UI treatment, confirmed before implementation
+
+**A degraded answer with no visible indicator is the bug this whole decision
+chain started from.** The silent 25-cap truncation survived two phases precisely
+because nothing on screen said the list was short. Both signals from step 4a get
+a visible treatment, and neither is service-layer-only.
+
+**Retrieval incomplete** (`retrievalComplete: false` — the 10-page bound
+engaged):
+
+- A `StatusBadge status="degraded"` reading **Partial discography** on the
+  timeline, adjacent to the heading rather than at the foot of the page.
+- A caption beneath it with real numbers: *"Showing 1,000 of 288,991 release
+  groups. Retrieval stopped at a safety limit, so this list is not complete."*
+- The existing `ArtistHeader` "partially retrieved" marker stays; the badge is
+  the explorer's own, because the timeline is what looks authoritative.
+
+**Context truncated** (`contextTruncated: true` — selection hit 200):
+
+- A caption attached to **the answer itself**, not to the page: *"Answered from
+  200 of 573 releases, selected by relevance to your question."*
+- Rendered inside the same block as the answer and its citations, so it travels
+  with the claim it qualifies and cannot be scrolled away from.
+
+**A declined counting question** (retrieval incomplete):
+
+- The deterministic insufficient-context response, with the reason stated
+  plainly: *"The full discography could not be retrieved, so a count would be
+  wrong rather than approximate."*
+- Not an AI answer, and not a silent refusal.
+
+Both captions use `role="status"` so a screen reader is told, and both are
+asserted in the accessibility pass. Minimal on purpose — a badge and a caption
+— but never absent.
+
 ## Verification plan
 
 | Gate | What Phase 8 adds |
 | --- | --- |
-| Unit | Retrieval paging and completeness; sanitisation (delimiter escape, envelope integrity, detection logs but never blocks); selection bounds and criteria; citation verification including the discard path |
+| Unit | Retrieval paging and completeness; sanitisation (delimiter escape, envelope integrity, detection logs but never blocks); selection including the two named cases in step 4 and both step 4a signals; citation verification including the discard path |
 | Integration | Full service path against a stubbed provider, including partial retrieval and a manipulated-citation answer |
 | Contract | Existing `answerDiscographyQuestion` coverage across all four adapters plus the fixture |
 | Compliance | The two new boundary assertions from step 1 |
 | pgTAP | New `supabase/tests/phase_8_discography.test.sql`: cross-user isolation for conversations and messages, owner-immutable triggers, cascade on account deletion. The Phase 2 file touches these tables four times, which asserts RLS is enabled, not that it isolates |
-| E2E | Timeline and filters; a grounded answer with citations; an unanswerable question answered honestly; conversation persistence across reload; the partial-retrieval notice |
+| E2E | Timeline and filters; a grounded answer with citations; an unanswerable question answered honestly; conversation persistence across reload; **the partial-discography badge and the truncated-context caption are asserted visible**, not merely produced |
 | Accessibility | axe on the explorer and the Q&A panel, **including hover states** — a 3.88:1 contrast defect survived two phases because no button was hovered during a scan |
 | Live | One real prolific artist retrieved completely, asserted against the true total |
 
