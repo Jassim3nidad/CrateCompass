@@ -348,6 +348,14 @@ const searchSchema = z.object({
           id: z.string(),
           uri: z.string(),
           name: z.string(),
+          /**
+           * Parsed for two deterministic decisions only: rejecting a match
+           * credited to a different artist, and honouring the listener's
+           * explicit-content setting. Neither value is persisted, displayed as
+           * Spotify metadata, or permitted anywhere near the AI layer.
+           */
+          explicit: z.boolean().optional(),
+          artists: z.array(z.object({ name: z.string() })).optional(),
         }),
       ),
     })
@@ -358,6 +366,9 @@ export interface SpotifySearchMatch {
   readonly id: SpotifyResourceId;
   readonly uri: SpotifyUri;
   readonly name: string;
+  /** Empty for artist results; the credited artists for track results. */
+  readonly artistNames: readonly string[];
+  readonly isExplicit: boolean;
 }
 
 export interface SpotifySearchResult {
@@ -393,12 +404,22 @@ export async function search(
   }
 
   const toMatches = (
-    items: readonly { id: string; uri: string; name: string }[] | undefined,
+    items:
+      | readonly {
+          id: string;
+          uri: string;
+          name: string;
+          explicit?: boolean | undefined;
+          artists?: readonly { name: string }[] | undefined;
+        }[]
+      | undefined,
   ): readonly SpotifySearchMatch[] =>
     (items ?? []).map((item) => ({
       id: asSpotifyResourceId(item.id),
       uri: asSpotifyUri(item.uri),
       name: item.name,
+      artistNames: (item.artists ?? []).map((artist) => artist.name),
+      isExplicit: item.explicit ?? false,
     }));
 
   return {

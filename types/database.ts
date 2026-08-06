@@ -7,13 +7,6 @@ export type Json =
   | Json[];
 
 export type Database = {
-  // Preserved by hand across regenerations. `supabase gen types --local` does
-  // not emit this block, but `--linked` does, and dropping it changes how
-  // supabase-js resolves its client generics. Re-add it after running
-  // `npm run db:types`.
-  __InternalSupabase: {
-    PostgrestVersion: "14.15";
-  };
   public: {
     Tables: {
       discography_conversations: {
@@ -245,6 +238,62 @@ export type Database = {
         };
         Relationships: [];
       };
+      generated_playlist_tracks: {
+        Row: {
+          artist_mbid: string;
+          artist_name: string;
+          created_at: string;
+          id: string;
+          playlist_id: string;
+          position: number;
+          recording_mbid: string;
+          release_title: string | null;
+          spotify_uri: string | null;
+          status: string;
+          track_title: string;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          artist_mbid: string;
+          artist_name: string;
+          created_at?: string;
+          id?: string;
+          playlist_id: string;
+          position: number;
+          recording_mbid: string;
+          release_title?: string | null;
+          spotify_uri?: string | null;
+          status?: string;
+          track_title: string;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          artist_mbid?: string;
+          artist_name?: string;
+          created_at?: string;
+          id?: string;
+          playlist_id?: string;
+          position?: number;
+          recording_mbid?: string;
+          release_title?: string | null;
+          spotify_uri?: string | null;
+          status?: string;
+          track_title?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "generated_playlist_tracks_playlist_id_user_id_fkey";
+            columns: ["playlist_id", "user_id"];
+            isOneToOne: false;
+            referencedRelation: "generated_playlists";
+            referencedColumns: ["id", "user_id"];
+          },
+        ];
+      };
       generated_playlists: {
         Row: {
           created_at: string;
@@ -252,9 +301,15 @@ export type Database = {
           discovery_session_id: string | null;
           failure_code: string | null;
           id: string;
+          idempotency_key: string | null;
+          is_public: boolean;
+          mood_text: string | null;
           name: string;
           spotify_playlist_id: string | null;
+          spotify_playlist_url: string | null;
           status: string;
+          track_total: number;
+          tracks_added: number;
           updated_at: string;
           user_id: string;
         };
@@ -264,9 +319,15 @@ export type Database = {
           discovery_session_id?: string | null;
           failure_code?: string | null;
           id?: string;
+          idempotency_key?: string | null;
+          is_public?: boolean;
+          mood_text?: string | null;
           name: string;
           spotify_playlist_id?: string | null;
+          spotify_playlist_url?: string | null;
           status?: string;
+          track_total?: number;
+          tracks_added?: number;
           updated_at?: string;
           user_id: string;
         };
@@ -276,9 +337,15 @@ export type Database = {
           discovery_session_id?: string | null;
           failure_code?: string | null;
           id?: string;
+          idempotency_key?: string | null;
+          is_public?: boolean;
+          mood_text?: string | null;
           name?: string;
           spotify_playlist_id?: string | null;
+          spotify_playlist_url?: string | null;
           status?: string;
+          track_total?: number;
+          tracks_added?: number;
           updated_at?: string;
           user_id?: string;
         };
@@ -386,6 +453,20 @@ export type Database = {
         };
         Returns: boolean;
       };
+      claim_idempotency_key: {
+        Args: {
+          p_idempotency_key: string;
+          p_operation: string;
+          p_request_digest: string;
+          p_ttl_seconds?: number;
+          p_user_id: string;
+        };
+        Returns: {
+          claimed: boolean;
+          conflict: boolean;
+          response_body: Json;
+        }[];
+      };
       claim_spotify_connection: {
         Args: {
           p_connection_id: string;
@@ -395,6 +476,16 @@ export type Database = {
           p_user_id: string;
         };
         Returns: string;
+      };
+      complete_idempotency_key: {
+        Args: {
+          p_idempotency_key: string;
+          p_operation: string;
+          p_response_body: Json;
+          p_response_status: number;
+          p_user_id: string;
+        };
+        Returns: undefined;
       };
       consume_spotify_oauth: {
         Args: { p_state_digest: string };
@@ -431,6 +522,14 @@ export type Database = {
           status: string;
           token_expires_at: string;
         }[];
+      };
+      release_idempotency_key: {
+        Args: {
+          p_idempotency_key: string;
+          p_operation: string;
+          p_user_id: string;
+        };
+        Returns: undefined;
       };
       rotate_spotify_credentials: {
         Args: {

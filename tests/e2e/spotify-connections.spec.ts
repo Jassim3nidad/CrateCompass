@@ -101,7 +101,12 @@ const callbackOutcomes = [
   { status: "denied", copy: /authorization was declined/i },
   { status: "invalid-state", copy: /expired, already used/i },
   { status: "session-mismatch", copy: /different CrateCompass session/i },
-  { status: "insufficient-scope", copy: /did not grant the private-playlist/i },
+  // Wording changed with the public-scope decision: the connection is no
+  // longer described as private-only.
+  {
+    status: "insufficient-scope",
+    copy: /did not grant the playlist permission/i,
+  },
   { status: "not-allowlisted", copy: /not on the pilot allowlist/i },
   { status: "already-linked", copy: /already linked to a different/i },
   { status: "quota-exceeded", copy: /rate limiting or has exhausted/i },

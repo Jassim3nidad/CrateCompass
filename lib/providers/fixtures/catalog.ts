@@ -4,7 +4,9 @@ import {
   type ArtistSearchCandidate,
   type CanonicalArtist,
   type DiscographyRelease,
+  type ReleaseTrack,
   type SourceAttribution,
+  type TaggedArtistCandidate,
 } from "@/types/music";
 
 /**
@@ -242,6 +244,94 @@ function toReleases(artist: FixtureArtist): readonly DiscographyRelease[] {
     genres: [],
     tags: [],
     attribution: attribution(release.mbid, "release-group"),
+  }));
+}
+
+/**
+ * Tag search over the invented catalogue.
+ *
+ * Includes a placeholder entity so the seed-ranking filter has something real
+ * to remove, and gives the seed artist the highest tag count so ranking order
+ * is observable rather than incidental.
+ */
+export function fixtureTagSearch(input: {
+  readonly tag: string;
+  readonly country?: string | undefined;
+  readonly limit: number;
+}): readonly TaggedArtistCandidate[] {
+  const tag = input.tag.trim().toLowerCase();
+
+  if (tag.length === 0) {
+    return [];
+  }
+
+  const matches = artists.filter(
+    (artist) =>
+      [...artist.genres, ...artist.tags].some(
+        (entry) => entry.toLowerCase() === tag,
+      ) &&
+      (input.country === undefined || artist.country === input.country),
+  );
+
+  const placeholder: TaggedArtistCandidate = {
+    mbid: asMusicBrainzId("f9000000-0000-4000-8000-000000000001"),
+    name: "Various Artists",
+    sortName: "Various Artists",
+    disambiguation: null,
+    type: "Other",
+    country: null,
+    // Deliberately the top Lucene hit, exactly as the live probe found: this is
+    // what the ranking filter exists to remove.
+    searchScore: 100,
+    tags: [{ name: input.tag, count: 99 }],
+    attribution: attribution("f9000000-0000-4000-8000-000000000001", "artist"),
+  };
+
+  const scored: TaggedArtistCandidate[] = matches.map((artist, index) => ({
+    mbid: asMusicBrainzId(artist.mbid),
+    name: artist.name,
+    sortName: artist.sortName,
+    disambiguation: artist.disambiguation,
+    type: artist.type,
+    country: artist.country,
+    searchScore: 90 - index,
+    tags: [
+      {
+        name: input.tag,
+        count: artist.mbid === MBID.harbourLanternGroup ? 40 : 5,
+      },
+    ],
+    attribution: attribution(artist.mbid, "artist"),
+  }));
+
+  return [placeholder, ...scored].slice(0, input.limit);
+}
+
+/** Ordered tracks for a fixture release group. */
+export function fixtureReleaseTracks(
+  releaseGroupMbid: string,
+): readonly ReleaseTrack[] {
+  const owner = artists.find((artist) =>
+    artist.releases.some((release) => release.mbid === releaseGroupMbid),
+  );
+  const release = owner?.releases.find(
+    (entry) => entry.mbid === releaseGroupMbid,
+  );
+
+  if (!owner || !release) {
+    return [];
+  }
+
+  return [1, 2, 3].map((position) => ({
+    recordingMbid: asMusicBrainzId(
+      `f5000000-0000-4000-8000-${releaseGroupMbid.slice(-9)}${position}`,
+    ),
+    title: `${release.title} — track ${position}`,
+    position,
+    mediumPosition: 1,
+    lengthMs: 210_000 + position * 1000,
+    releaseTitle: release.title,
+    releaseGroupMbid: asMusicBrainzId(releaseGroupMbid),
   }));
 }
 

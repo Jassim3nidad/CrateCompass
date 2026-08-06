@@ -1,6 +1,6 @@
 # Phase 7 — Natural-language mood playlists: scoping
 
-Status: scoped and decided, not started — awaiting approval to implement  
+Status: implemented 2026-08-05  
 Date: 2026-08-05  
 Builds on: [phase-7-mood-scope.md](phase-7-mood-scope.md) (ListenBrainz
 constraints), [ADR 0003](../architecture/adr/0003-discovery-provider-selection.md),
@@ -118,6 +118,26 @@ control Phase 7 needs.
   a hang.
 - **Playlist creation is the first irreversible outward action** in the product.
   Idempotency and honest partial-failure reporting are not polish here.
+
+## What shipped
+
+The pipeline as built:
+
+1. `parseMoodAction` — AI parses the listener's words into criteria, or asks one
+   clarification question and stops rather than guessing.
+2. MusicBrainz tag search supplies seed candidates, re-ranked by community tag
+   votes with catalogue placeholders removed (`lib/mood/seed-ranking.ts`).
+3. The listener confirms the seed. Required, not an optimisation.
+4. ListenBrainz expands from that seed; MusicBrainz supplies studio-release
+   tracks, deduplicated and interleaved so the playlist is not artist-blocked.
+5. The draft is saved to `generated_playlists` + `generated_playlist_tracks`,
+   reviewable and editable before anything leaves the application.
+6. `createPlaylistAction` claims an idempotency key, resolves each track through
+   Spotify search, creates the playlist, adds items in batches of 100, and
+   records per-item status.
+
+Deliberately absent from the built pipeline: any Spotify call before the
+listener confirms, and any AI call after resolution begins.
 
 ## Decisions
 

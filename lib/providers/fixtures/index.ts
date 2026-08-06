@@ -11,7 +11,9 @@ import {
 } from "@/lib/providers/discovery/port";
 import {
   fixtureLookup,
+  fixtureReleaseTracks,
   fixtureSearch,
+  fixtureTagSearch,
   fixtureSimilarArtists,
   FIXTURE_SEEDS,
   UNRESOLVABLE_CANDIDATE_MBID,
@@ -71,6 +73,18 @@ export function createFixtureMusicBrainzPort(): MusicBrainzPort {
       }
 
       return found;
+    },
+
+    async searchArtistsByTag(input) {
+      return fixtureTagSearch({
+        tag: input.tag,
+        country: input.country,
+        limit: input.limit ?? 25,
+      });
+    },
+
+    async listReleaseGroupTracks(releaseGroupMbid) {
+      return fixtureReleaseTracks(releaseGroupMbid);
     },
   };
 }

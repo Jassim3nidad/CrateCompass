@@ -89,6 +89,41 @@ export interface ArtistSearchCandidate {
   readonly attribution: SourceAttribution;
 }
 
+/** A community tag with its vote count, which is the weighting signal. */
+export interface WeightedTag {
+  readonly name: string;
+  readonly count: number;
+}
+
+/**
+ * A tag-search hit. Distinct from `ArtistSearchCandidate` because it carries
+ * the tag weights that make re-ranking possible — Lucene relevance alone put a
+ * pop artist at the top of a trip-hop search.
+ */
+export interface TaggedArtistCandidate {
+  readonly mbid: MusicBrainzId;
+  readonly name: string;
+  readonly sortName: string;
+  readonly disambiguation: string | null;
+  readonly type: string | null;
+  readonly country: string | null;
+  readonly searchScore: number | null;
+  /** May be empty: not every search hit carries inline tags. */
+  readonly tags: readonly WeightedTag[];
+  readonly attribution: SourceAttribution;
+}
+
+/** One track of a release, in the order MusicBrainz records it. */
+export interface ReleaseTrack {
+  readonly recordingMbid: MusicBrainzId;
+  readonly title: string;
+  readonly position: number;
+  readonly mediumPosition: number;
+  readonly lengthMs: number | null;
+  readonly releaseTitle: string;
+  readonly releaseGroupMbid: MusicBrainzId;
+}
+
 /** One similar artist, as reported by the discovery provider. */
 export interface ArtistCandidate {
   /**

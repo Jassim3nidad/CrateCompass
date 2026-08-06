@@ -1,62 +1,50 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 
 import { PageHeader } from "@/components/layout/page-header";
-import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { ProviderStatus } from "@/components/ui/provider-status";
-import { MoodForm } from "@/features/foundation/components/mood-form";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { MoodWorkflow } from "@/features/mood/components/mood-workflow";
+import { getOptionalUser } from "@/lib/supabase/auth";
 
 export const metadata: Metadata = { title: "Mood" };
 
-export default function MoodPage() {
+/**
+ * The mood surface requires an account, unlike discovery.
+ *
+ * Two reasons, both real rather than administrative: interpretation spends
+ * metered AI usage that has to be charged to someone, and the draft it produces
+ * is a durable record the listener needs to be able to come back to.
+ */
+export default async function MoodPage() {
+  const { user } = await getOptionalUser();
+
   return (
     <div className="page-shell">
       <PageHeader
         eyebrow="Mood compass"
         title="Describe the room, not a dropdown."
-        description="Write the atmosphere in your own language. The future workflow will make its interpretation visible before finding any music."
+        description="Write the atmosphere in your own words. Every step of the interpretation stays visible, and nothing reaches Spotify until you confirm it."
       />
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(18rem,0.75fr)]">
-        <Card variant="raised">
-          <CardHeader>
-            <CardTitle>Your listening brief</CardTitle>
-            <CardDescription>
-              Nothing is sent to AI in this foundation phase. The form
-              demonstrates limits, focus, disabled, and notification states.
-            </CardDescription>
-          </CardHeader>
-          <MoodForm />
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Interpretation pipeline</CardTitle>
-            <CardDescription>
-              Every step remains visible and recoverable.
-            </CardDescription>
-          </CardHeader>
-          <div className="space-y-3">
-            <ProviderStatus
-              name="Mood parser"
-              status="not-configured"
-              description="Structured AI adapter planned for Phase 5."
-            />
-            <ProviderStatus
-              name="Discovery source"
-              status="not-configured"
-              description="Provider decision is gated before Phase 4."
-            />
-            <ProviderStatus
-              name="Spotify export"
-              status="not-configured"
-              description="Optional connection arrives in Phase 3."
-            />
-          </div>
-        </Card>
-      </div>
+
+      {user ? (
+        <MoodWorkflow />
+      ) : (
+        <EmptyState
+          title="Sign in to build a playlist"
+          description="Mood interpretation is metered per account, and the draft it produces is saved so you can come back to it. Artist discovery works without an account."
+          action={
+            <div className="flex flex-wrap justify-center gap-3">
+              <Button asChild variant="accent">
+                <Link href="/auth/sign-in?returnTo=/mood">Sign in</Link>
+              </Button>
+              <Button asChild variant="secondary">
+                <Link href="/discover">Go to discovery</Link>
+              </Button>
+            </div>
+          }
+        />
+      )}
     </div>
   );
 }

@@ -1,8 +1,10 @@
 import "server-only";
 
 import {
+  listReleaseGroupTracks,
   lookupArtist,
   searchArtists,
+  searchArtistsByTag,
 } from "@/lib/providers/musicbrainz/client";
 import type { MusicBrainzPort } from "@/lib/providers/musicbrainz/port";
 import {
@@ -22,5 +24,10 @@ export function getMusicBrainzClient(): MusicBrainzPort {
     return createFixtureMusicBrainzPort();
   }
 
-  return { searchArtists, lookupArtist };
+  return {
+    searchArtists,
+    lookupArtist,
+    searchArtistsByTag,
+    listReleaseGroupTracks,
+  };
 }

@@ -10,6 +10,8 @@ import {
   asMusicBrainzId,
   type ArtistSearchCandidate,
   type CanonicalArtist,
+  type ReleaseTrack,
+  type TaggedArtistCandidate,
   type DiscographyRelease,
   type PartialDate,
   type ReleaseDatePrecision,
@@ -250,6 +252,71 @@ const searchCache = createTtlCache<readonly ArtistSearchCandidate[]>({
   ttlMs: CACHE_TTL_MS.musicBrainzSearch,
 });
 
+const tagSearchCache = createTtlCache<readonly TaggedArtistCandidate[]>({
+  name: "musicbrainz.tag_search",
+  ttlMs: CACHE_TTL_MS.musicBrainzSearch,
+});
+
+/**
+ * Caching track listings matters more than the other caches: building one
+ * playlist needs a release lookup per artist at one request per second, so a
+ * listener who edits and rebuilds would otherwise pay the full pacing cost
+ * again.
+ */
+const releaseTrackCache = createTtlCache<readonly ReleaseTrack[]>({
+  name: "musicbrainz.release_tracks",
+  ttlMs: CACHE_TTL_MS.musicBrainzLookup,
+});
+
+/** Tag counts are the weighting signal that Lucene relevance does not provide. */
+const taggedArtistSearchSchema = z.object({
+  artists: z.array(
+    z.object({
+      id: z.string().min(1),
+      name: z.string().min(1),
+      "sort-name": z.string().optional(),
+      disambiguation: z.string().optional(),
+      type: z.string().nullable().optional(),
+      country: z.string().nullable().optional(),
+      score: z.number().optional(),
+      tags: z
+        .array(z.object({ name: z.string(), count: z.number().optional() }))
+        .optional(),
+    }),
+  ),
+});
+
+const releaseTracksSchema = z.object({
+  releases: z.array(
+    z.object({
+      id: z.string().min(1),
+      title: z.string().min(1),
+      status: z.string().nullable().optional(),
+      date: z.string().nullable().optional(),
+      media: z
+        .array(
+          z.object({
+            position: z.number().optional(),
+            tracks: z
+              .array(
+                z.object({
+                  position: z.number().optional(),
+                  title: z.string().min(1),
+                  recording: z.object({
+                    id: z.string().min(1),
+                    title: z.string().optional(),
+                    length: z.number().nullable().optional(),
+                  }),
+                }),
+              )
+              .optional(),
+          }),
+        )
+        .optional(),
+    }),
+  ),
+});
+
 const lookupCache = createTtlCache<CanonicalArtistWithDiscography>({
   name: "musicbrainz.lookup",
   ttlMs: CACHE_TTL_MS.musicBrainzLookup,
@@ -259,6 +326,77 @@ const lookupCache = createTtlCache<CanonicalArtistWithDiscography>({
 export function clearMusicBrainzCachesForTesting(): void {
   searchCache.clear();
   lookupCache.clear();
+  tagSearchCache.clear();
+  releaseTrackCache.clear();
+}
+
+/**
+ * The ordered tracks of a release group's earliest official release.
+ *
+ * One release per group, not all of them: a group can carry dozens of regional
+ * pressings whose track lists are the same record, and fetching them all would
+ * spend the pacing budget to learn nothing. Official status is preferred so a
+ * promo or bootleg pressing does not stand in for the album.
+ */
+export async function listReleaseGroupTracks(
+  releaseGroupMbid: string,
+): Promise<readonly ReleaseTrack[]> {
+  return releaseTrackCache.read(releaseGroupMbid, () =>
+    listReleaseGroupTracksUncached(releaseGroupMbid),
+  );
+}
+
+async function listReleaseGroupTracksUncached(
+  releaseGroupMbid: string,
+): Promise<readonly ReleaseTrack[]> {
+  const parameters = new URLSearchParams({
+    "release-group": releaseGroupMbid,
+    inc: "recordings",
+    // A handful, then pick: asking for one risks getting a promo pressing.
+    limit: "5",
+    fmt: "json",
+  });
+
+  const payload = await request(
+    `/ws/2/release?${parameters}`,
+    "release.tracks",
+  );
+  const parsed = releaseTracksSchema.safeParse(payload);
+
+  if (!parsed.success) {
+    throw new MusicBrainzError(
+      "invalid-response",
+      "MusicBrainz returned an unexpected release response.",
+    );
+  }
+
+  const withTracks = parsed.data.releases.filter((release) =>
+    (release.media ?? []).some((medium) => (medium.tracks ?? []).length > 0),
+  );
+
+  if (withTracks.length === 0) {
+    return [];
+  }
+
+  const official = withTracks.filter(
+    (release) => release.status === "Official",
+  );
+  const pool = official.length > 0 ? official : withTracks;
+  const selected = pool.reduce((earliest, release) =>
+    (release.date ?? "9999") < (earliest.date ?? "9999") ? release : earliest,
+  );
+
+  return (selected.media ?? []).flatMap((medium) =>
+    (medium.tracks ?? []).map((track) => ({
+      recordingMbid: asMusicBrainzId(track.recording.id),
+      title: track.recording.title ?? track.title,
+      position: track.position ?? 0,
+      mediumPosition: medium.position ?? 1,
+      lengthMs: track.recording.length ?? null,
+      releaseTitle: selected.title,
+      releaseGroupMbid: asMusicBrainzId(releaseGroupMbid),
+    })),
+  );
 }
 
 export async function searchArtists(
@@ -300,6 +438,81 @@ async function searchArtistsUncached(
     type: artist.type ?? null,
     country: artist.country ?? null,
     searchScore: artist.score ?? null,
+    attribution: attribution(artist.id),
+  }));
+}
+
+/**
+ * Artist search constrained to a tag, with optional country and type filters.
+ *
+ * Lucene relevance, not popularity, decides the order — probing `tag:"trip hop"`
+ * alone put Madonna in the top three. Adding a country filter changed the same
+ * probe to Fatboy Slim, Faithless and The Chemical Brothers, so the filters are
+ * a quality mechanism rather than a convenience. Ranking is still corrected
+ * afterwards (`lib/mood/seed-ranking.ts`) and confirmed by a person.
+ */
+export async function searchArtistsByTag(input: {
+  readonly tag: string;
+  readonly country?: string | undefined;
+  readonly type?: string | undefined;
+  readonly limit?: number | undefined;
+}): Promise<readonly TaggedArtistCandidate[]> {
+  const tag = input.tag.trim();
+
+  if (tag.length === 0) {
+    return [];
+  }
+
+  const limit = Math.min(Math.max(input.limit ?? 25, 1), 100);
+  const clauses = [`tag:"${tag.replace(/"/g, "")}"`];
+
+  if (input.country) clauses.push(`country:${input.country}`);
+  if (input.type) clauses.push(`type:${input.type}`);
+
+  const key = `${limit}:${clauses.join(" AND ")}`;
+
+  return tagSearchCache.read(key, () =>
+    searchArtistsByTagUncached(clauses.join(" AND "), limit),
+  );
+}
+
+async function searchArtistsByTagUncached(
+  query: string,
+  limit: number,
+): Promise<readonly TaggedArtistCandidate[]> {
+  const parameters = new URLSearchParams({
+    query,
+    limit: String(limit),
+    fmt: "json",
+  });
+
+  const payload = await request(
+    `/ws/2/artist?${parameters}`,
+    "artist.tag_search",
+  );
+  const parsed = taggedArtistSearchSchema.safeParse(payload);
+
+  if (!parsed.success) {
+    throw new MusicBrainzError(
+      "invalid-response",
+      "MusicBrainz returned an unexpected tag-search response.",
+    );
+  }
+
+  return parsed.data.artists.map((artist) => ({
+    mbid: asMusicBrainzId(artist.id),
+    name: artist.name,
+    sortName: artist["sort-name"] ?? artist.name,
+    disambiguation: artist.disambiguation || null,
+    type: artist.type ?? null,
+    country: artist.country ?? null,
+    searchScore: artist.score ?? null,
+    // Present on most but not all search hits, which is why ranking must
+    // tolerate an empty list rather than assuming a tag is absent.
+    tags: (artist.tags ?? []).map((entry) => ({
+      name: entry.name,
+      count: entry.count ?? 0,
+    })),
     attribution: attribution(artist.id),
   }));
 }

@@ -132,6 +132,35 @@ describe("repository scan", () => {
     expect(unguarded).toEqual([]);
   });
 
+  it("keeps playlist creation free of AI imports", () => {
+    // The counterpart of the discovery rule: the module that talks to Spotify
+    // must not be able to reach an AI provider, so a resolved track cannot
+    // travel to one even by mistake.
+    const offenders = sources
+      .filter((source) => source.path.startsWith("features/playlists/"))
+      .filter((source) =>
+        /from\s+["'][^"']*\/ai(\/|["'])/.test(source.contents),
+      )
+      .map((source) => source.path);
+
+    expect(offenders).toEqual([]);
+  });
+
+  it("keeps mood modules free of Spotify imports", () => {
+    const offenders = sources
+      .filter(
+        (source) =>
+          source.path.startsWith("lib/mood/") ||
+          source.path.startsWith("features/mood/"),
+      )
+      .filter((source) =>
+        /from\s+["'][^"']*providers\/spotify/.test(source.contents),
+      )
+      .map((source) => source.path);
+
+    expect(offenders).toEqual([]);
+  });
+
   it("keeps discovery evidence modules free of Spotify imports", () => {
     // Discovery is where AI input is assembled. If a Spotify module were
     // reachable from here, the boundary would depend on the code inside these

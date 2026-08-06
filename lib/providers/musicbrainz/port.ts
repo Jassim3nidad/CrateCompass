@@ -1,5 +1,9 @@
 import type { CanonicalArtistWithDiscography } from "@/lib/providers/musicbrainz/client";
-import type { ArtistSearchCandidate } from "@/types/music";
+import type {
+  ArtistSearchCandidate,
+  ReleaseTrack,
+  TaggedArtistCandidate,
+} from "@/types/music";
 
 /**
  * Provider-neutral metadata port.
@@ -15,4 +19,18 @@ export interface MusicBrainzPort {
     options?: { readonly limit?: number },
   ): Promise<readonly ArtistSearchCandidate[]>;
   lookupArtist(mbid: string): Promise<CanonicalArtistWithDiscography>;
+  /**
+   * Tag search is a MusicBrainz capability, deliberately on this port rather
+   * than the discovery port: ListenBrainz has no equivalent, and putting it
+   * behind `DiscoveryProvider` would misrepresent where the data comes from.
+   */
+  searchArtistsByTag(input: {
+    readonly tag: string;
+    readonly country?: string | undefined;
+    readonly type?: string | undefined;
+    readonly limit?: number | undefined;
+  }): Promise<readonly TaggedArtistCandidate[]>;
+  listReleaseGroupTracks(
+    releaseGroupMbid: string,
+  ): Promise<readonly ReleaseTrack[]>;
 }
