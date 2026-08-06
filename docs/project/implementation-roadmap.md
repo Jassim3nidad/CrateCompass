@@ -247,6 +247,28 @@ slot.
 A display therefore needs a new `security definer` RPC, and there is no surface
 to show it on until the Phase 8 Q&A panel exists. Both land together.
 
+### Tracked follow-up: conversation retention past a five-user pilot
+
+Decision 3 of Phase 8 settled the retention default: `discography_conversations`
+and `discography_messages` keep everything, with no TTL, no cap, and no purge
+job. Phase 9 owns deletion controls. Keeping only the most recent conversation
+per artist was rejected because it destroys history silently, and because Phase 9
+should build deletion on top of complete data rather than data with holes
+already in it.
+
+**That default is sized for five users and nothing larger.** Growth is genuinely
+unbounded, so revisit before any of these:
+
+- the pilot widens beyond the Development Mode allowlist;
+- Phase 9 slips far enough that conversations accumulate for months;
+- `discography_messages` row counts stop being negligible for a single account.
+
+This is not a privacy gap and should not be recorded as one. RLS isolates
+conversations per user, the Phase 2 owner-immutable triggers are in place, and
+account deletion cascades — a listener who deletes their account takes their
+conversations with them today. What is missing is *selective* deletion, which is
+Phase 9's scope, and the retention cost above, which is this note's.
+
 ### Exit gate
 
 Approve Phase 8 separately.
