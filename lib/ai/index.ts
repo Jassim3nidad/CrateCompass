@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createAnthropicProvider } from "@/lib/ai/adapters/anthropic";
+import { createFixtureAiProvider } from "@/lib/ai/adapters/fixture";
 import { createOpenAiProvider } from "@/lib/ai/adapters/openai";
 import { createGeminiProvider } from "@/lib/ai/adapters/gemini";
 import { createOpenRouterProvider } from "@/lib/ai/adapters/openrouter";
@@ -15,6 +16,7 @@ import { AiUsageLimitError, claimAiUsage } from "@/lib/ai/limits";
 import { AiProviderError, type AiProvider } from "@/lib/ai/provider";
 import { logger } from "@/lib/observability/logger";
 import { getServerEnvironment } from "@/lib/env";
+import { areProviderFixturesEnabled } from "@/lib/providers/fixtures/enabled";
 
 /**
  * The entry point product code uses.
@@ -30,6 +32,13 @@ import { getServerEnvironment } from "@/lib/env";
  */
 
 export function getAiProvider(): AiProvider {
+  // Same gate as the music providers: a real model in an automated test would
+  // vary between runs, spend a key, and on the free tier feed the test's own
+  // text into training data.
+  if (areProviderFixturesEnabled()) {
+    return createFixtureAiProvider();
+  }
+
   const environment = getServerEnvironment();
 
   switch (environment.AI_PROVIDER) {

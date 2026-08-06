@@ -2,13 +2,8 @@ import "server-only";
 
 import { resolveSpotifyTrack } from "@/lib/matching/track-resolution";
 import { logger } from "@/lib/observability/logger";
-import {
-  addPlaylistItems,
-  createPlaylist,
-  search,
-  PLAYLIST_ITEM_BATCH_LIMIT,
-} from "@/lib/providers/spotify/client";
-import { getAccessToken } from "@/lib/providers/spotify/token-manager";
+import { PLAYLIST_ITEM_BATCH_LIMIT } from "@/lib/providers/spotify/client";
+import { getSpotifyPort } from "@/lib/providers/spotify";
 import {
   asSpotifyResourceId,
   asSpotifyUri,
@@ -110,10 +105,11 @@ export async function createPlaylistFromDraft(input: {
     };
   }
 
+  const spotify = getSpotifyPort();
   let accessToken: string;
 
   try {
-    accessToken = await getAccessToken(input.userId);
+    accessToken = await spotify.getAccessToken(input.userId);
   } catch (error) {
     await releaseIdempotencyKey({
       userId: input.userId,
@@ -154,7 +150,7 @@ export async function createPlaylistFromDraft(input: {
 
   for (const track of draft.tracks) {
     try {
-      const results = await search(accessToken, {
+      const results = await spotify.search(accessToken, {
         query: `track:"${track.title}" artist:"${track.artistName}"`,
         types: ["track"],
       });
@@ -220,7 +216,7 @@ export async function createPlaylistFromDraft(input: {
   let created: { readonly id: string; readonly uri: string };
 
   try {
-    const playlist = await createPlaylist(accessToken, {
+    const playlist = await spotify.createPlaylist(accessToken, {
       name: draft.title,
       description: draft.description,
       isPublic: draft.isPublic,
@@ -262,7 +258,7 @@ export async function createPlaylistFromDraft(input: {
     const batch = resolved.slice(index, index + PLAYLIST_ITEM_BATCH_LIMIT);
 
     try {
-      await addPlaylistItems(accessToken, {
+      await spotify.addPlaylistItems(accessToken, {
         playlistId: asSpotifyResourceId(created.id),
         uris: batch.map((entry) => asSpotifyUri(entry.uri)),
       });

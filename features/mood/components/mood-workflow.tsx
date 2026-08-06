@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { FieldDescription, Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import {
   buildDraftAction,
@@ -25,6 +24,10 @@ import type {
   MoodParseResult,
   SeedOption,
 } from "@/features/mood/state";
+import {
+  WorkflowProgress,
+  type WorkflowStage,
+} from "@/features/mood/components/workflow-progress";
 import { createPlaylistAction } from "@/features/playlists/actions";
 import type { CreationResult } from "@/features/mood/state";
 import { PLAYLIST_LENGTH } from "@/lib/mood/controls";
@@ -53,6 +56,9 @@ export function MoodWorkflow() {
   const [draft, setDraft] = useState<DraftResult | null>(null);
   const [creation, setCreation] = useState<CreationResult | null>(null);
   const [announcement, setAnnouncement] = useState("");
+  // Set from whichever action is actually in flight, so the indicator states a
+  // fact rather than animating a guess.
+  const [stage, setStage] = useState<WorkflowStage>("idle");
   const [pending, startTransition] = useTransition();
   const idempotencyKey = useRef<string | null>(null);
 
@@ -66,10 +72,12 @@ export function MoodWorkflow() {
     setDraft(null);
     setCreation(null);
     idempotencyKey.current = null;
+    setStage("interpreting");
 
     startTransition(async () => {
       const result = await parseMoodAction({ moodText, controls });
       setParsed(result);
+      setStage(result.status === "ready" ? "seeds-ready" : "idle");
       setAnnouncement(
         result.status === "ready"
           ? `${result.seeds.length} seed artists found.`
@@ -83,6 +91,7 @@ export function MoodWorkflow() {
   function chooseSeed(seed: SeedOption) {
     setCreation(null);
     idempotencyKey.current = null;
+    setStage("building");
 
     startTransition(async () => {
       const result = await buildDraftAction({
@@ -91,6 +100,7 @@ export function MoodWorkflow() {
         controls,
       });
       setDraft(result);
+      setStage(result.status === "ready" ? "draft-ready" : "seeds-ready");
       setAnnouncement(
         result.status === "ready"
           ? `${result.tracks.length} tracks ready to review.`
@@ -131,6 +141,7 @@ export function MoodWorkflow() {
     idempotencyKey.current ??= `${draft.playlistId}-${crypto.randomUUID()}`;
     const key = idempotencyKey.current;
     const playlistId = draft.playlistId;
+    setStage("creating");
 
     startTransition(async () => {
       const result = await createPlaylistAction({
@@ -139,6 +150,13 @@ export function MoodWorkflow() {
         avoidExplicit,
       });
       setCreation(result);
+      setStage(
+        result.status === "created" ||
+          result.status === "partial" ||
+          result.status === "already-created"
+          ? "done"
+          : "draft-ready",
+      );
       setAnnouncement(
         result.status === "created"
           ? "Playlist created in Spotify."
@@ -238,11 +256,10 @@ export function MoodWorkflow() {
         </div>
       </Card>
 
-      {pending && !parsed ? (
-        <div aria-busy="true" className="space-y-3">
-          <span className="sr-only">Interpreting…</span>
-          <Skeleton className="h-24 w-full" />
-        </div>
+      {stage !== "idle" &&
+      stage !== "seeds-ready" &&
+      stage !== "draft-ready" ? (
+        <WorkflowProgress stage={stage} />
       ) : null}
 
       {parsed?.status === "failed" ? (

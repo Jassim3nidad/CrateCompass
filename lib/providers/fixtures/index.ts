@@ -1,6 +1,5 @@
 import "server-only";
 
-import { getServerEnvironment } from "@/lib/env";
 import { MusicBrainzError } from "@/lib/providers/musicbrainz/client";
 import type { MusicBrainzPort } from "@/lib/providers/musicbrainz/port";
 import {
@@ -41,9 +40,7 @@ import {
  *   for a provider record.
  */
 
-export function areProviderFixturesEnabled(): boolean {
-  return getServerEnvironment().PROVIDER_FIXTURES === "1";
-}
+export { areProviderFixturesEnabled } from "@/lib/providers/fixtures/enabled";
 
 const FIXTURE_ALGORITHM = "fixture_similarity_v1";
 

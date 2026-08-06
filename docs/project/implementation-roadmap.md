@@ -192,6 +192,34 @@ Approve Phase 7 separately.
 - Critical end-to-end path with mocked providers and separate manual pilot smoke test only when explicitly configured.
 - Accessibility and production build.
 
+### Tracked follow-up: track-selection quality
+
+Phase 7 shipped without a popularity signal, because the only non-Spotify one
+available answered `500 — "Popularity API currently disabled due to high load"`
+when probed on 2026-08-05, twice. Tracks are therefore the opening tracks of an
+artist's studio releases: defensible and fully attributed, but not "their best
+tracks", and the interface says which album each came from rather than implying
+a ranking it does not have.
+
+**This is not blocking and should not be treated as unfinished Phase 7 work.**
+The seam is already in place: track selection sits behind a port with a
+MusicBrainz adapter (`lib/mood/track-selection.ts`, consumed by
+`features/mood/service.ts`), so adding ListenBrainz popularity is an adapter
+plus a ranking step, not a redesign.
+
+Revisit when any of these becomes true:
+
+- the ListenBrainz popularity API (`/1/popularity/top-recordings-for-artist/`)
+  starts answering again — re-probe before planning around it;
+- ListenBrainz Labs `similar-recordings` proves usable for ranking within an
+  artist rather than only from a seed recording;
+- listener feedback shows the opening-track heuristic reads as broken rather
+  than merely modest.
+
+Spotify's own ordering remains excluded as a ranking source: that decision is
+recorded in `docs/product/phase-7-scope.md` and is a compliance position, not a
+technical preference.
+
 ### Exit gate
 
 Approve Phase 8 separately.

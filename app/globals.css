@@ -11,7 +11,10 @@
   --muted: #aaa6b0;
   --muted-dim: #928e99;
   --violet: #7357e8;
-  --violet-strong: #856cf0;
+  /* Deeper than --violet, not lighter. The accent button carries white text,
+     and the previous #856cf0 gave it 3.88:1 — below AA. Automated scans missed
+     it for two phases because no button was ever hovered during a scan. */
+  --violet-strong: #6344d9;
   --amber: #d89b45;
   --amber-soft: #edbc75;
   --electric: #57a6dd;

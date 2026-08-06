@@ -38,15 +38,13 @@ vi.mock("@/features/playlists/repository", async (importOriginal) => ({
   updateTrackResolution: mocks.updateTrackResolution,
 }));
 
-vi.mock("@/lib/providers/spotify/token-manager", () => ({
-  getAccessToken: mocks.getAccessToken,
-}));
-
-vi.mock("@/lib/providers/spotify/client", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/providers/spotify/client")>()),
-  search: mocks.search,
-  createPlaylist: mocks.createPlaylist,
-  addPlaylistItems: mocks.addPlaylistItems,
+vi.mock("@/lib/providers/spotify", () => ({
+  getSpotifyPort: () => ({
+    getAccessToken: mocks.getAccessToken,
+    search: mocks.search,
+    createPlaylist: mocks.createPlaylist,
+    addPlaylistItems: mocks.addPlaylistItems,
+  }),
 }));
 
 const { createPlaylistFromDraft } =

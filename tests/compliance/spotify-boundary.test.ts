@@ -125,7 +125,13 @@ describe("repository scan", () => {
   it("guards every Spotify provider module with server-only", () => {
     const unguarded = sources
       .filter((source) => source.path.startsWith("lib/providers/spotify/"))
-      .filter((source) => source.path !== "lib/providers/spotify/types.ts")
+      // Type-only modules have no runtime to leak. Everything else in this
+      // directory makes requests and must stay server-side.
+      .filter(
+        (source) =>
+          source.path !== "lib/providers/spotify/types.ts" &&
+          source.path !== "lib/providers/spotify/port.ts",
+      )
       .filter((source) => !source.contents.includes('import "server-only"'))
       .map((source) => source.path);
 
@@ -219,9 +225,13 @@ describe("repository scan", () => {
       .map((source) => source.path)
       .filter((path) => !path.startsWith("lib/providers/fixtures/"));
 
+    // Only the four provider factories may reach a fixture. Each is the single
+    // seam for its provider, and each is gated on the same environment check.
     expect(importers.sort()).toEqual([
+      "lib/ai/index.ts",
       "lib/providers/discovery/index.ts",
       "lib/providers/musicbrainz/index.ts",
+      "lib/providers/spotify/index.ts",
     ]);
   });
 
