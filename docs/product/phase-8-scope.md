@@ -1,6 +1,7 @@
 # Phase 8 — Discography explorer and Q&A: scoping
 
-Status: proposed, not started — awaiting decisions on the open questions  
+Status: decisions closed 2026-08-06; implementation awaiting approval of
+[phase-8-plan.md](phase-8-plan.md)  
 Date: 2026-08-06  
 Builds on: [phase-6-discovery.md](phase-6-discovery.md),
 [phase-7-scope.md](phase-7-scope.md),
@@ -13,7 +14,12 @@ and every answer is grounded in retrieved MusicBrainz records with sources they
 can check. An unanswerable question is answered with "the data does not say"
 rather than a plausible sentence.
 
-## A defect to fix first
+## A defect that was fixed first — resolved in `330faea`
+
+**Resolved before Phase 8 began.** The retrieval mechanism, both consumers, and
+contract coverage all landed in `330faea`; what follows is the record of why.
+Only the *display* question survived into Phase 8, and it is settled in
+decision 1 below.
 
 `lookupArtist` requests `inc=release-groups`, and MusicBrainz caps that
 subquery at **25 release groups**. It does not say it has done so.
@@ -141,23 +147,69 @@ app/artists/[artistId]/
 - **Community metadata is adversarial input.** Covered by citation
   verification, but the honest position is defence in depth, not one check.
 
-## Open questions
+## Decisions — all closed 2026-08-06
 
-1. **Retrieval bound.** Fetch every release group (6 paced requests for the
-   worst realistic case), or cap at 300 with "showing 300 of 573" stated
-   plainly? A cap keeps the page fast but makes counting questions unanswerable
-   — which the UI would then have to say. My recommendation: fetch all, cache
-   for six hours, and show a progress state, because the counting questions are
-   the ones people actually ask.
-2. **Usage limits for Q&A.** Current limits make a conversation stop after four
-   questions in a minute or twenty in a day. Options: raise the per-minute
-   allowance for this operation only; keep the limits and show remaining quota
-   in the panel; or count a conversation rather than a question. This is a cost
-   decision, so it is yours.
-3. **Conversation retention default.** The tables persist indefinitely and
-   Phase 9 owns deletion controls. Keep every conversation until then, or keep
-   only the most recent per artist and let Phase 9 introduce history?
-4. **Injection handling depth.** Citation verification catches a manipulated
-   *answer*. Should retrieved titles and disambiguations also be neutralised on
-   the way in — delimited and escaped, with instruction-shaped strings flagged
-   — or is post-answer verification sufficient for a private pilot?
+### 1. Retrieval bound: fetch everything
+
+Every release group is retrieved, cached for six hours, and a staged progress
+state covers the wait. The counting questions — "how many studio albums", "which
+came out in the 2010s" — are the ones people actually ask, and a bounded slice
+makes them unanswerable rather than cheaper.
+
+Cost accepted: roughly six paced seconds on a cold cache for a 573-group artist.
+The 10-page safety bound stays for catalogue placeholders like "Various Artists"
+(288,991 groups, ~45 minutes at one request per second). When it engages,
+`releasesComplete` is false, the interface marks the retrieval partial, and Q&A
+declines counting questions rather than answering from a slice.
+
+### 2. Q&A usage limits: wider burst, same daily ceiling
+
+`answerDiscographyQuestion` allows ten requests a minute; the daily cap stays at
+twenty. Maximum spend per user is unchanged — the burst window exists to stop
+runaway loops, and a conversation is not one.
+
+**Already implemented** in `5a0536d`: no migration was required, because
+`claim_ai_usage` takes both windows as call arguments. See `perMinuteLimitFor`
+in `lib/ai/limits.ts`.
+
+Known consequence: the window is counted across all operations, so ten rapid
+questions will then block a mood parse, which still allows four. The window is
+shared; the operation states the tolerance it accepts.
+
+The remaining-quota display is part of the Phase 8 build and does need a
+migration — see the plan.
+
+### 3. Conversation retention: keep everything
+
+No TTL, no cap, no purge job. Phase 9 owns deletion controls and should build
+them on complete data. Keeping only the most recent conversation per artist was
+rejected because it destroys history silently.
+
+A tripwire is recorded in the roadmap: this default is sized for a five-user
+pilot, growth is unbounded, and it must be revisited if the pilot widens or
+Phase 9 slips.
+
+### 4. Injection handling: delimit blocking, detect logged-only
+
+Three layers, deliberately split by how reliable each one is:
+
+1. **Structural delimiting — blocking.** Retrieved records reach the model
+   inside an explicit escaped data envelope, framed as records rather than
+   instructions. Deterministic, and it removes the ambiguity rather than
+   guessing at intent.
+2. **Instruction-shaped detection — logged only, never blocking.** "Instruction
+   shaped" is not reliably detectable and MusicBrainz holds real releases whose
+   titles are imperative sentences. A blocking heuristic would corrupt genuine
+   discography entries on exactly the most interesting catalogues. Logging gives
+   the signal without the collateral damage, and produces the evidence needed to
+   justify anything stronger.
+3. **Citation verification — unchanged.** Every `citedReleaseIds` entry must be
+   a release actually supplied, or the answer is discarded.
+
+Displayed titles are never altered. Neutralisation applies only to what reaches
+the model; changing what is shown would misrepresent the source.
+
+Why input work is still needed given verification: citation checking cannot see
+an injected string steering the model into refusing a legitimate question, nor a
+correctly-cited but wrongly-described answer. Both are failures the
+anti-hallucination rules exist to prevent.
