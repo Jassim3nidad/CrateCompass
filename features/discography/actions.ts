@@ -13,6 +13,12 @@ import {
   startConversation,
 } from "@/features/discography/repository";
 import { toCitation, type AskResult } from "@/features/discography/state";
+import {
+  completeSession,
+  findConversationSession,
+  startSession,
+  touchSession,
+} from "@/lib/library/sessions";
 import { getOptionalUser } from "@/lib/supabase/auth";
 
 /**
@@ -95,6 +101,11 @@ export async function askQuestionAction(input: unknown): Promise<AskResult> {
       provider: outcome.provider,
     });
 
+    await recordConversationSession({
+      userId: user.id,
+      canonicalArtistId: parsed.data.artistMbid,
+    });
+
     return {
       status: "answered",
       answer: verified.answer,
@@ -111,6 +122,36 @@ export async function askQuestionAction(input: unknown): Promise<AskResult> {
         : "That answer could not be grounded in the retrieved records.",
     provenance,
   };
+}
+
+/**
+ * One history entry per conversation, not per question.
+ *
+ * Per-question rows would give six near-identical entries for one afternoon's
+ * questions about an artist, which reads as noise rather than history. The
+ * session is keyed on the artist identifier so a returning listener continues
+ * the same entry, and `updated_at` is what orders history by recency.
+ */
+async function recordConversationSession(input: {
+  readonly userId: string;
+  readonly canonicalArtistId: string;
+}): Promise<void> {
+  const existing = await findConversationSession(input);
+
+  if (existing) {
+    await touchSession({ userId: input.userId, sessionId: existing });
+    return;
+  }
+
+  const sessionId = await startSession({
+    userId: input.userId,
+    kind: "discography",
+    // The artist identifier, not the question: the entry represents the
+    // conversation, and its question count comes from the messages.
+    inputValue: input.canonicalArtistId,
+  });
+
+  await completeSession({ userId: input.userId, sessionId });
 }
 
 /**

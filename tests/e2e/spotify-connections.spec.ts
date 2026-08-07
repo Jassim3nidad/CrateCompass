@@ -25,7 +25,9 @@ async function signIn(page: Page) {
   await page.getByLabel("Email address").fill(email);
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Continue" }).click();
-  await expect(page).toHaveURL(/\/settings\/connections$/);
+  await expect(page).toHaveURL(/\/settings\/connections$/, {
+    timeout: 20_000,
+  });
 
   // The URL updates before the streamed content paints, so waiting on the
   // heading is what actually guarantees the page is ready to assert against.

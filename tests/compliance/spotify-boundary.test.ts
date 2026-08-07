@@ -186,6 +186,44 @@ describe("repository scan", () => {
     expect(offenders).toEqual([]);
   });
 
+  it("keeps library and history modules free of Spotify imports", () => {
+    // A stored playlist id and URL are the only Spotify values these modules
+    // may hold — the "operationally required" exception from Phase 7. Reaching
+    // a provider module is how that becomes catalogue mirroring.
+    const offenders = sources
+      .filter(
+        (source) =>
+          source.path.startsWith("lib/library/") ||
+          source.path.startsWith("features/library/") ||
+          source.path.startsWith("features/history/"),
+      )
+      .filter((source) =>
+        /from\s+["'][^"']*providers\/spotify/.test(source.contents),
+      )
+      .map((source) => source.path);
+
+    expect(offenders).toEqual([]);
+  });
+
+  it("keeps library and history modules free of AI imports", () => {
+    // Explanations are snapshotted at save time and rendered from storage. A
+    // library that could regenerate one would show a different reason than the
+    // one the listener kept, and spend their daily allowance doing it.
+    const offenders = sources
+      .filter(
+        (source) =>
+          source.path.startsWith("lib/library/") ||
+          source.path.startsWith("features/library/") ||
+          source.path.startsWith("features/history/"),
+      )
+      .filter((source) =>
+        /from\s+["'][^"']*\/ai(\/|["'])/.test(source.contents),
+      )
+      .map((source) => source.path);
+
+    expect(offenders).toEqual([]);
+  });
+
   it("keeps discography modules out of the playlist creation tree", () => {
     // The counterpart direction: nothing that resolves Spotify may pull in a
     // module that holds retrieved MusicBrainz context destined for a model.

@@ -77,6 +77,45 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  // Phase 9 is the first tree forbidden both directions at once, so both
+  // patterns live in one rule. Flat config replaces `no-restricted-imports`
+  // rather than merging it, so splitting these across two blocks would silently
+  // drop whichever matched first.
+  //
+  // No Spotify provider: the library stores a playlist id and URL as the
+  // "operationally required" exception and nothing more, and must not be able
+  // to start mirroring catalogue data.
+  //
+  // No AI: the library renders explanations that were verified and stored when
+  // they were made. One that quietly re-asked a model would show a different
+  // reason than the one a listener kept, and spend their daily allowance to do
+  // it.
+  {
+    files: [
+      "lib/library/**/*.ts",
+      "features/library/**/*.ts",
+      "features/history/**/*.ts",
+    ],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["**/providers/spotify/**", "@/lib/providers/spotify/*"],
+              message:
+                "Library and history modules must not import Spotify provider modules. A stored playlist id and URL are the only Spotify values they may hold.",
+            },
+            {
+              group: ["**/lib/ai/**", "@/lib/ai", "@/lib/ai/*"],
+              message:
+                "Library and history modules must not import AI modules. Explanations are snapshotted at save time and rendered from storage, never regenerated.",
+            },
+          ],
+        },
+      ],
+    },
+  },
   {
     files: ["lib/providers/spotify/**/*.ts"],
     rules: {

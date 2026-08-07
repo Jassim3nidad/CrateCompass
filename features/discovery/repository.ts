@@ -1,5 +1,6 @@
 import "server-only";
 
+import type { ExplanationColumns } from "@/lib/library/explanation-snapshot";
 import { logger } from "@/lib/observability/logger";
 import { createClient } from "@/lib/supabase/server";
 
@@ -75,6 +76,11 @@ export async function saveDiscoveredArtist(input: {
   readonly mbid: string;
   readonly name: string;
   readonly sourceReference: string | null;
+  /**
+   * The explanation on screen when the listener chose to keep this, frozen so
+   * the library shows the reason they kept it rather than a fresh one.
+   */
+  readonly explanation?: ExplanationColumns | undefined;
 }): Promise<DiscoveryWriteOutcome> {
   const supabase = await createClient();
   const { error } = await supabase.from("favorite_discoveries").insert({
@@ -83,6 +89,7 @@ export async function saveDiscoveredArtist(input: {
     canonical_artist_id: input.mbid,
     source_type: "artist",
     source_reference: input.sourceReference,
+    ...(input.explanation ?? {}),
   });
 
   if (error?.code === UNIQUE_VIOLATION) {

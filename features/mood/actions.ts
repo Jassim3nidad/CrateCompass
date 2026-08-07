@@ -21,6 +21,11 @@ import {
   removeDraftTrack,
   saveDraft,
 } from "@/features/playlists/repository";
+import {
+  completeSession,
+  failSession,
+  startSession,
+} from "@/lib/library/sessions";
 import { getOptionalUser } from "@/lib/supabase/auth";
 
 /**
@@ -108,6 +113,15 @@ export async function parseMoodAction(
 
   const controls = mergeControls(parsed.data.controls);
 
+  // Recorded here rather than in the service: `parseMoodAndFindSeeds` runs
+  // again inside `buildDraftAction`, deliberately, so recording there would
+  // enter every mood into history twice.
+  const sessionId = await startSession({
+    userId: user.id,
+    kind: "mood",
+    inputValue: parsed.data.moodText,
+  });
+
   const result = await parseMoodAndFindSeeds({
     moodText: parsed.data.moodText,
     controls,
@@ -115,8 +129,15 @@ export async function parseMoodAction(
   });
 
   if (!result.ok) {
+    await failSession({
+      userId: user.id,
+      sessionId,
+      failureCode: "mood-parse-failed",
+    });
     return { status: "failed", message: result.message };
   }
+
+  await completeSession({ userId: user.id, sessionId });
 
   const { criteria, tags, seeds } = result.value;
 

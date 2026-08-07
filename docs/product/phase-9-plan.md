@@ -1,6 +1,6 @@
 # Phase 9 — Library, history, and data rights: implementation plan
 
-Status: **written, awaiting approval — no implementation has started**  
+Status: **implemented and verified**  
 Date: 2026-08-07  
 Decisions: [phase-9-scope.md](phase-9-scope.md) (all seven closed)  
 Builds on: [phase-8-plan.md](phase-8-plan.md),

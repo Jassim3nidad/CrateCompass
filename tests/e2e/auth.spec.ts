@@ -52,7 +52,7 @@ test("sign-in creates a cookie session, honors returnTo, and sign-out clears it"
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Continue" }).click();
 
-  await expect(page).toHaveURL(/\/settings$/);
+  await expect(page).toHaveURL(/\/settings$/, { timeout: 20_000 });
   await expect(
     page.getByRole("heading", {
       level: 1,
@@ -87,7 +87,7 @@ test("account deletion requires the password and removes the auth identity", asy
   await page.getByLabel("Email address").fill(email);
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Continue" }).click();
-  await expect(page).toHaveURL(/\/discover$/);
+  await expect(page).toHaveURL(/\/discover$/, { timeout: 20_000 });
   await page.goto("/settings");
   await expect(
     page.getByRole("heading", {

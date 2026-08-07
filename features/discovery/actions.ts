@@ -22,6 +22,7 @@ import type {
 import { getAiProvider } from "@/lib/ai";
 import { aiInputDisclosure } from "@/lib/ai/disclosure";
 import { MAX_USER_TEXT_LENGTH } from "@/lib/ai/schemas";
+import { toExplanationColumns } from "@/lib/library/explanation-snapshot";
 import { logger } from "@/lib/observability/logger";
 import { getOptionalUser } from "@/lib/supabase/auth";
 
@@ -47,10 +48,38 @@ import { getOptionalUser } from "@/lib/supabase/auth";
 const mbidSchema = z.uuid();
 const nameSchema = z.string().trim().min(1).max(255);
 
+/**
+ * The explanation on screen when Save was pressed.
+ *
+ * It arrives from the browser because that is where the displayed explanation
+ * is, and regenerating it server-side would spend an AI request and could
+ * return different prose than the listener actually read. It is bounded here
+ * rather than trusted: a server action is a public endpoint, and these strings
+ * are written to a row and rendered back later.
+ */
+const explanationSnapshotSchema = z.object({
+  summary: z.string().trim().min(1).max(2000),
+  sharedCharacteristics: z.array(z.string().trim().min(1).max(400)).max(10),
+  contrast: z.string().trim().max(1000).nullable(),
+  startingPoint: z
+    .object({
+      releaseId: z.string().trim().min(1).max(64),
+      title: z.string().trim().min(1).max(300),
+      year: z.string().trim().max(4).nullable(),
+      primaryType: z.string().trim().max(40).nullable(),
+      sourceUrl: z.string().trim().max(1000).nullable(),
+    })
+    .nullable(),
+  source: z.enum(["ai", "template"]),
+  provider: z.string().trim().max(40).nullable(),
+  model: z.string().trim().max(255).nullable(),
+});
+
 const saveInputSchema = z.object({
   mbid: mbidSchema,
   name: nameSchema,
   sourceUrl: z.string().trim().max(1000).nullable(),
+  explanation: explanationSnapshotSchema.nullable().optional(),
 });
 
 const dismissInputSchema = z.object({
@@ -91,11 +120,32 @@ export async function saveDiscoveryAction(input: unknown): Promise<SaveState> {
     return { status: "auth-required", message: AUTH_REQUIRED };
   }
 
+  const supplied = parsed.data.explanation;
+
   const outcome = await saveDiscoveredArtist({
     userId: user.id,
     mbid: parsed.data.mbid,
     name: parsed.data.name,
     sourceReference: parsed.data.sourceUrl,
+    ...(supplied
+      ? {
+          explanation: toExplanationColumns({
+            explanation: {
+              source: supplied.source,
+              summary: supplied.summary,
+              sharedCharacteristics: supplied.sharedCharacteristics,
+              contrast: supplied.contrast,
+              startingPoint: supplied.startingPoint,
+              // Not stored: the verification trace did its job before this
+              // explanation was ever displayed.
+              groundedIn: [],
+              confidence: "medium",
+              model: supplied.model,
+            },
+            provider: supplied.provider,
+          }),
+        }
+      : {}),
   });
 
   if (outcome === "failed") {

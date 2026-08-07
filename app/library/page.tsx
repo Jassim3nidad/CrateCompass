@@ -1,68 +1,85 @@
-import { Compass } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
 
 import { PageHeader } from "@/components/layout/page-header";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { EmptyState } from "@/components/ui/empty-state";
+import { LibraryBrowser } from "@/features/library/components/library-browser";
+import {
+  readLibraryPage,
+  readTagVocabulary,
+  type EntityFilter,
+} from "@/features/library/repository";
+import { isSortMode, type SortMode } from "@/lib/library/cursor";
 import { getAuthenticatedUser } from "@/lib/supabase/auth";
 
 export const metadata: Metadata = { title: "Library" };
 
-export default async function LibraryPage() {
-  const { supabase } = await getAuthenticatedUser();
-  const { data: favorites } = await supabase
-    .from("favorite_discoveries")
-    .select("id, artist_name, recording_name, note, source_type, created_at")
-    .order("created_at", { ascending: false });
+interface LibraryPageProps {
+  readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+const ENTITY_VALUES: readonly EntityFilter[] = [
+  "all",
+  "artist",
+  "mood",
+  "discography",
+  "manual",
+];
+
+function single(value: string | string[] | undefined): string | null {
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+
+export default async function LibraryPage({ searchParams }: LibraryPageProps) {
+  const { user } = await getAuthenticatedUser();
+  const params = await searchParams;
+
+  const sortParam = single(params.sort);
+  const sort: SortMode = isSortMode(sortParam) ? sortParam : "newest";
+
+  const entityParam = single(params.type);
+  const entity: EntityFilter = ENTITY_VALUES.includes(
+    entityParam as EntityFilter,
+  )
+    ? (entityParam as EntityFilter)
+    : "all";
+
+  const tags = (single(params.tags) ?? "")
+    .split(",")
+    .map((tag) => tag.trim().toLowerCase())
+    .filter((tag) => tag.length > 0)
+    .slice(0, 20);
+
+  const search = single(params.q);
+
+  const [page, vocabulary] = await Promise.all([
+    readLibraryPage({
+      userId: user.id,
+      sort,
+      cursor: single(params.cursor),
+      search,
+      entity,
+      tags,
+    }),
+    readTagVocabulary(user.id),
+  ]);
 
   return (
     <div className="page-shell">
       <PageHeader
         eyebrow="Personal library"
         title="The finds you chose to keep."
-        description="Favorites, explanations, notes, albums, and generated playlist records will live here—not a mirrored streaming catalog."
+        description="Saved discoveries with the explanation that convinced you, plus your own notes and tags. Nothing here mirrors a streaming catalogue."
       />
-      {favorites?.length ? (
-        <ul className="grid gap-4 md:grid-cols-2">
-          {favorites.map((favorite) => (
-            <li key={favorite.id}>
-              <Card className="h-full">
-                <p className="text-xs font-semibold tracking-[0.15em] text-[var(--muted-dim)] uppercase">
-                  {favorite.source_type}
-                </p>
-                <h2 className="mt-3 text-lg font-semibold">
-                  {favorite.artist_name}
-                </h2>
-                {favorite.recording_name ? (
-                  <p className="mt-1 text-sm text-[var(--muted)]">
-                    {favorite.recording_name}
-                  </p>
-                ) : null}
-                {favorite.note ? (
-                  <p className="mt-4 text-sm leading-6 text-[var(--muted)]">
-                    {favorite.note}
-                  </p>
-                ) : null}
-              </Card>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <EmptyState
-          title="Your library is quiet"
-          description="Save a discovery and it will appear here in your private library."
-          action={
-            <Button asChild variant="secondary">
-              <Link href="/discover">
-                <Compass aria-hidden="true" className="size-4" />
-                Explore discovery
-              </Link>
-            </Button>
-          }
-        />
-      )}
+
+      <LibraryBrowser
+        items={page.items}
+        matching={page.matching}
+        total={page.total}
+        vocabulary={vocabulary}
+        search={search ?? ""}
+        sort={sort}
+        entity={entity}
+        activeTags={tags}
+      />
     </div>
   );
 }

@@ -269,6 +269,23 @@ account deletion cascades — a listener who deletes their account takes their
 conversations with them today. What is missing is *selective* deletion, which is
 Phase 9's scope, and the retention cost above, which is this note's.
 
+### Tracked follow-up: e2e sign-in assertions are timing-sensitive
+
+Three specs — `auth`, `spotify-connections`, and the keyboard case in
+`discovery` — asserted a post-sign-in navigation on Playwright's default
+five-second timeout, while every other spec in the suite already used twenty.
+Sign-in through the dev server takes seven to thirteen seconds on a loaded
+machine, so those assertions were marginal and began failing during Phase 9 as
+the suite grew.
+
+The product is not slow in production; `next dev` compiles on demand and the
+suite now creates far more accounts than it did. The assertions were aligned
+with the rest of the suite rather than the timeout being treated as a defect.
+
+Worth revisiting if it recurs: `retries: 0` locally against `retries: 2` in CI
+means a marginal test fails outright on a developer machine and passes in CI,
+which is the wrong way round for catching real regressions.
+
 ### Tracked follow-up: suggested questions are static
 
 The Q&A panel offers four fixed prompts ("What was their first studio album?",

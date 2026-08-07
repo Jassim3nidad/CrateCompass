@@ -1,6 +1,11 @@
 import "server-only";
 
 import { AiUsageLimitError, claimAiUsage } from "@/lib/ai/limits";
+import {
+  completeSession,
+  recordResults,
+  startSession,
+} from "@/lib/library/sessions";
 import { AiBoundaryViolationError } from "@/lib/ai/gateway";
 import { getAiProvider } from "@/lib/ai";
 import { AiProviderError } from "@/lib/ai/provider";
@@ -246,6 +251,21 @@ export async function loadDiscoveryPage(input: {
     };
   });
 
+  // Recorded once per search, not once per page: "load more" continues a
+  // discovery rather than starting one, and a session per page would turn one
+  // search into five history entries.
+  //
+  // Best-effort throughout. A listener whose discovery worked must not see it
+  // fail because the audit row did not land.
+  if (input.userId && input.offset === 0) {
+    await recordDiscoverySession({
+      userId: input.userId,
+      seedName: input.seed.name,
+      candidates,
+      algorithm: evidence.algorithm,
+    });
+  }
+
   return {
     ok: true,
     value: {
@@ -259,6 +279,44 @@ export async function loadDiscoveryPage(input: {
       algorithm: evidence.algorithm,
     },
   };
+}
+
+/**
+ * Writes the history record for one discovery.
+ *
+ * The rationale stored here is the provider's own ranking, not an AI
+ * explanation: explanations are generated per candidate on demand and may never
+ * be requested. What history can honestly record is what the discovery
+ * provider returned and where each candidate placed.
+ */
+async function recordDiscoverySession(input: {
+  readonly userId: string;
+  readonly seedName: string;
+  readonly candidates: readonly DiscoveryCandidate[];
+  readonly algorithm: string;
+}): Promise<void> {
+  const sessionId = await startSession({
+    userId: input.userId,
+    kind: "artist",
+    inputValue: input.seedName,
+  });
+
+  if (!sessionId) return;
+
+  await recordResults({
+    userId: input.userId,
+    sessionId,
+    results: input.candidates.map((candidate) => ({
+      rank: candidate.rank,
+      artistName: candidate.name,
+      canonicalArtistId: candidate.mbid,
+      rationale: `Ranked ${candidate.rank} by ${input.algorithm}: ${candidate.strength} similarity at ${candidate.relativeScore}% of the top score.`,
+      sourceProvider: "listenbrainz",
+      sourceReference: candidate.sourceUrl,
+    })),
+  });
+
+  await completeSession({ userId: input.userId, sessionId });
 }
 
 /** Why an explanation is the deterministic template rather than written prose. */
