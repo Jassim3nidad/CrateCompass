@@ -178,7 +178,21 @@ and provider identifiers, not a re-hosted copy of anyone's catalogue.
    of what was asked, which is what history is; the library is for things
    deliberately kept.
 
-6. **Export scope and format.** The compliance plan requires account-data export
+6. ~~**Export scope and format.**~~ **Closed 2026-08-07.** Documentation only for
+   the user-facing mechanism: operator-run, on request, JSON out. The
+   documentation describes that process honestly and contains no "export from
+   settings" language, because no such control exists. The download, route and
+   interface defer to Phase 12 alongside the privacy-policy draft.
+
+   The enumeration ships now: a server-side function with no route and no HTTP
+   surface, listing every user-owned table and returning one listener's rows.
+   Two tests give it its value — it must cover every table carrying a `user_id`
+   column, so a table added later fails the test until it is registered, and it
+   must return nothing after account deletion. The second is the T23
+   residual-data check the threat model already commits to, and it composes with
+   decision 2's assertion. Retained below for the reasoning.
+
+   The compliance plan requires account-data export
    *documentation*; whether Phase 9 ships the mechanism is a scope decision.
    Options: a documented manual process; a JSON download of every
    application-owned row; or JSON plus a human-readable summary. Cost rises with
