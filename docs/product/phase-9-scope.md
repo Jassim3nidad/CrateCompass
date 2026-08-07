@@ -127,7 +127,15 @@ and provider identifiers, not a re-hosted copy of anyone's catalogue.
    `created_at`. My recommendation: genuine delete with an in-memory undo
    window, and the interface saying plainly that leaving the page finalises it.
 
-3. **What history records, and from when.** Nothing writes sessions today, so
+3. ~~**What history records, and from when.**~~ **Closed 2026-08-07.** History
+   covers discovery, mood, and discography questions — `input_kind` widens to
+   include `discography`. Recording begins at Phase 9's ship date and runs
+   forward only. **No entries are synthesised for past activity under any
+   framing.** For accounts that predate tracking, the empty state says plainly
+   that history began when the feature did, rather than implying nothing
+   happened. Retained below for the reasoning.
+
+   Nothing writes sessions today, so
    there is a choice about scope and about the past:
    - *Scope:* `discovery_sessions.input_kind` is constrained to `('artist',
      'mood')`, so Phase 8 discography questions are not representable without
