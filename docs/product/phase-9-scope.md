@@ -1,6 +1,7 @@
 # Phase 9 — Saved discoveries, history, and data rights: scoping
 
-Status: **proposed, not started — awaiting decisions on the open questions**  
+Status: **decisions closed 2026-08-07; implementation awaiting approval of
+[phase-9-plan.md](phase-9-plan.md)**  
 Date: 2026-08-07  
 Builds on: [phase-6-discovery.md](phase-6-discovery.md),
 [phase-7-scope.md](phase-7-scope.md), [phase-8-plan.md](phase-8-plan.md)
@@ -263,7 +264,32 @@ and provider identifiers, not a re-hosted copy of anyone's catalogue.
    because a data right that requires asking someone is one most people never
    exercise — but this is a scope decision and it is yours.
 
-7. **Pagination shape.** Cursor-based on `created_at` is stable while rows are
+7. ~~**Pagination shape.**~~ **Closed 2026-08-07.** Keyset cursor on
+   `(sort_key, id)`, one parameterised implementation rather than three. The
+   `id` tiebreaker is required because `created_at` is not unique when several
+   favourites are saved in one transaction.
+
+   Three consequences, all accepted. Cursor keys are per-sort-mode, so changing
+   sort resets to the first page. "Select all" can only mean the rows currently
+   loaded, and the interface must say so — with bulk delete irreversible under
+   decision 2, an unlabelled select-all meaning 20 of 200 is not acceptable. And
+   the total needs its own count query, which is cheap and worth having, because
+   "42 favourites, 8 matching these tags" is the context a listener needs before
+   deleting in bulk.
+
+   It also agrees with decision 2 rather than fighting it: a restored record
+   gets a new `created_at`, so under newest-first it reappears at the top rather
+   than where it was. That is the honest consequence of a genuine delete, and
+   the interface already says the item was re-added.
+
+   Offset was rejected because bulk delete makes it visibly wrong — remove ten
+   rows on the first page and the second page skips ten the listener never saw,
+   which is the silent-wrongness pattern this project keeps finding — and
+   because "large libraries remain responsive" is an acceptance criterion, and
+   retrofitting cursor later changes the API shape rather than a query.
+   Retained below for the reasoning.
+
+   Cursor-based on `created_at` is stable while rows are
    being deleted and is what large libraries want; offset pagination is simpler
    and works with a page-number control. Given bulk delete is in scope, offset
    pagination will visibly skip rows mid-session. My recommendation: cursor.
