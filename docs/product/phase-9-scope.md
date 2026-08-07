@@ -210,7 +210,29 @@ and provider identifiers, not a re-hosted copy of anyone's catalogue.
    reason than the one you kept is worse than one that shows an old reason, and
    the daily cap makes regeneration genuinely user-visible.
 
-5. **Where discography conversations live.** They are the only Phase 8 records
+5. ~~**Where discography conversations live.**~~ **Closed 2026-08-07.** History,
+   at one session row per conversation rather than per question. `updated_at`
+   tracks growth, `completed_at` is set on the first successful answer, and the
+   entry states how many questions it covers so a title drawn from the opening
+   question does not read as the whole of it.
+
+   The line: the library is for things deliberately kept, history is for what
+   happened. A conversation is the latter. Keeping an individual answer is
+   already representable — `favorite_discoveries.source_type` accepts
+   `discography` — so nothing new is needed for that path.
+
+   Content stays where it is; the entry links to the artist page, which already
+   renders the conversation. Deleting an entry cascades to messages through the
+   owner-scoped foreign key Phase 2 defined, and the conversation is resolved by
+   `(user_id, canonical_artist_id)` rather than by adding a column to a Phase 8
+   table. This closes the retention tripwire Phase 8 left open.
+
+   Decision 3 made this cheaper than expected: because history covers all three
+   activity types through `discovery_sessions`, there is one spine table to
+   paginate rather than a union of differently-shaped rows. Retained below for
+   the reasoning.
+
+   They are the only Phase 8 records
    with no home outside the artist page. Options: a library entity type
    alongside favourites; a history entity; or settings-only bulk deletion with
    no browsing. This also settles the retention tripwire left open in Phase 8.
