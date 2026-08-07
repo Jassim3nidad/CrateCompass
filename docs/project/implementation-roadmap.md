@@ -269,6 +269,23 @@ account deletion cascades — a listener who deletes their account takes their
 conversations with them today. What is missing is *selective* deletion, which is
 Phase 9's scope, and the retention cost above, which is this note's.
 
+### Tracked follow-up: suggested questions are static
+
+The Q&A panel offers four fixed prompts ("What was their first studio album?",
+"Did they release any live albums?", and two more). They are not derived from
+what the retrieved records can actually answer, so on a sparse artist a
+suggestion can lead straight to an honest refusal — the product suggesting a
+question it then declines.
+
+Not wrong, but weaker than it looks: the refusal is correct behaviour, and the
+suggestion is what makes it feel like a failure. Deriving them is cheap once the
+timeline is in hand — offer the live-album question only when a live release
+exists, the decade question only for an artist spanning one — and it is pure
+logic over `Discography`, needing no provider call and no schema change.
+
+Worth doing when the Q&A panel is next touched. It is a polish item, not a
+correctness one, so Phase 10 is the natural home unless it surfaces earlier.
+
 ### Exit gate
 
 Approve Phase 8 separately.

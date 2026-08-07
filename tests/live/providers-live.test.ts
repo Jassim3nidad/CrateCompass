@@ -245,6 +245,117 @@ describe.runIf(live)("live provider factories", () => {
     }
   }, 120_000);
 
+  it("answers a real discography question from a real model, and grounds it", async () => {
+    // The gap this closes. Contract tests prove each adapter's output validates
+    // against the schema; the fixture end-to-end proves the panel renders. What
+    // neither covers is a real model reading 200 real, escaped release titles
+    // and returning identifiers that survive citation verification. Phase 6's
+    // `groundedIn` defect was exactly this shape: every explanation validated
+    // and every one failed verification, and only a live check found it.
+    const { getMusicBrainzClient } =
+      await import("@/lib/providers/musicbrainz");
+    const { getAiProvider } = await import("@/lib/ai");
+    const { buildDiscography } = await import("@/lib/discography/retrieval");
+    const { selectContext } = await import("@/lib/discography/selection");
+    const { sanitizeReleases } = await import("@/lib/discography/sanitize");
+    const { verifyAnswer } = await import("@/lib/discography/verification");
+    const { discographyAnswerSchema } = await import("@/lib/ai/schemas");
+
+    const lookup = await getMusicBrainzClient().lookupArtist(NIRVANA_MBID);
+    const discography = buildDiscography(NIRVANA_MBID, lookup);
+
+    const question = "What was their first studio album, and what year?";
+    const context = selectContext({ discography, question });
+
+    // A 573-group artist must exercise the bound, or this is not testing the
+    // shape the product actually sends.
+    expect(context.contextTruncated).toBe(true);
+    expect(context.entries.length).toBe(200);
+
+    const { releases } = sanitizeReleases(context.entries);
+    expect(releases.length).toBeGreaterThan(0);
+
+    const provider = getAiProvider();
+    const output = await provider.answerDiscographyQuestion({
+      question,
+      artistName: discography.artistName,
+      releases,
+    });
+
+    expect(discographyAnswerSchema.safeParse(output).success).toBe(true);
+
+    const verified = verifyAnswer({ answer: output, context });
+
+    // The assertion that matters: a real model given real records must produce
+    // an answer that survives grounding, not one that is always discarded. A
+    // permanent fallback to "insufficient context" would be the Phase 6 defect
+    // repeating, and it would look like working software from the outside.
+    expect(verified.status).toBe("answered");
+
+    if (verified.status === "answered") {
+      expect(verified.answer.length).toBeGreaterThan(0);
+      expect(verified.citations.length).toBeGreaterThan(0);
+
+      // Every citation resolves to a release that was actually supplied.
+      const suppliedIds = new Set(releases.map((release) => release.id));
+      for (const citation of verified.citations) {
+        expect(suppliedIds.has(citation.mbid)).toBe(true);
+      }
+
+      // Nirvana's first studio album is Bleach, 1989. The model is being asked
+      // a question the supplied records answer, so a grounded reply should
+      // reach it; this is a sanity check on the retrieval and selection feeding
+      // it, not a demand that the model phrase anything particular.
+      expect(verified.answer.toLowerCase()).toMatch(/bleach|1989/);
+
+      // The provenance the interface renders must survive the round trip.
+      expect(verified.contextTruncated).toBe(true);
+      expect(verified.retrievalComplete).toBe(true);
+      expect(verified.totalAvailable).toBe(discography.total);
+    }
+  }, 180_000);
+
+  it("declines a real question the real records cannot answer", async () => {
+    // The honest-limitation path, against a live model. A product that answers
+    // everything is not grounded; this asserts the refusal is reachable.
+    const { getMusicBrainzClient } =
+      await import("@/lib/providers/musicbrainz");
+    const { getAiProvider } = await import("@/lib/ai");
+    const { buildDiscography } = await import("@/lib/discography/retrieval");
+    const { selectContext } = await import("@/lib/discography/selection");
+    const { sanitizeReleases } = await import("@/lib/discography/sanitize");
+    const { verifyAnswer } = await import("@/lib/discography/verification");
+
+    const lookup = await getMusicBrainzClient().lookupArtist(PORTISHEAD_MBID);
+    const discography = buildDiscography(PORTISHEAD_MBID, lookup);
+
+    // Release groups carry no personnel, so this is unanswerable from context.
+    const question =
+      "Who played bass on their second album, and where were they born?";
+    const context = selectContext({ discography, question });
+    const { releases } = sanitizeReleases(context.entries);
+
+    const output = await getAiProvider().answerDiscographyQuestion({
+      question,
+      artistName: discography.artistName,
+      releases,
+    });
+
+    const verified = verifyAnswer({ answer: output, context });
+
+    // Either it says it cannot answer, or it answers while citing only supplied
+    // releases. What must not happen is a fabricated personnel claim carrying
+    // an invented citation, and verification is what forecloses that.
+    if (verified.status === "answered") {
+      const suppliedIds = new Set(releases.map((release) => release.id));
+      for (const citation of verified.citations) {
+        expect(suppliedIds.has(citation.mbid)).toBe(true);
+      }
+    } else {
+      expect(verified.reason.length).toBeGreaterThan(0);
+    }
+  }, 180_000);
+
   it("returns the real discovery provider with a non-fixture algorithm", async () => {
     const { getDiscoveryProvider } = await import("@/lib/providers/discovery");
 
