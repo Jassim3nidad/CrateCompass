@@ -1,0 +1,175 @@
+# Phase 9 — Saved discoveries, history, and data rights: scoping
+
+Status: **proposed, not started — awaiting decisions on the open questions**  
+Date: 2026-08-07  
+Builds on: [phase-6-discovery.md](phase-6-discovery.md),
+[phase-7-scope.md](phase-7-scope.md), [phase-8-plan.md](phase-8-plan.md)
+
+## What Phase 9 promises
+
+A listener can find what they kept, retrace how they found it, and take it all
+away. Favourites, notes, saved explanations, generated playlists and discography
+conversations become a library they can search and manage, a history they can
+read and delete, and an export they can leave with.
+
+## A defect to fix first
+
+**Nothing writes `discovery_sessions` or `discovery_results`.**
+
+`app/history/page.tsx` reads `discovery_sessions` and renders whatever comes
+back. No feature module writes to it — verified by scanning the repository for
+every reader and writer:
+
+| Table | Written by | Read by |
+| --- | --- | --- |
+| `favorite_discoveries` | `features/discovery/repository.ts` | `app/library/page.tsx` |
+| `dismissed_discoveries` | `features/discovery/repository.ts` | `features/discovery/repository.ts` |
+| `discovery_sessions` | **nothing** | `app/history/page.tsx` |
+| `discovery_results` | **nothing** | nothing |
+| `generated_playlists` | `features/playlists/repository.ts` | Phase 7 flow only |
+| `discography_conversations` | `features/discography/repository.ts` | the artist page only |
+
+The consequence: **the history page is permanently empty and always has been.**
+It is not broken in a way anyone would notice, because an empty history looks
+exactly like a new account. That is the same shape as the silent 25-cap
+truncation — a screen that is confidently wrong and gives no sign of it.
+
+`discovery_results.rationale` and `source_provider` exist and are unused, which
+means every Phase 6 explanation is regenerated on demand and none is kept.
+
+**Deciding what history records is therefore the first Phase 9 decision, not a
+detail of it.** See open question 3.
+
+## What already exists
+
+| Piece | State |
+| --- | --- |
+| `favorite_discoveries` with note, source type, canonical ids | Created Phase 2, written Phase 6 |
+| `dismissed_discoveries` | Created Phase 2, written Phase 6 |
+| `discovery_sessions` / `discovery_results` with RLS | Created Phase 2, **never written** |
+| `generated_playlists` / `generated_playlist_tracks` | Written Phase 7 |
+| `discography_conversations` / `discography_messages` | Written Phase 8 |
+| Account deletion with cascade, password re-entry | Built in Phase 2, on `/settings` |
+| Spotify disconnect, credentials destroyed | Built in Phase 3 |
+| `/library` and `/history` routes | Phase 1/2 stubs: bare lists, no search, filters, or actions |
+| Cross-user isolation for all of the above | pgTAP, 121 assertions |
+
+Account deletion and disconnect — the two data rights that matter most — already
+work. Phase 9 adds the granular controls around them, not the safety net.
+
+## In scope
+
+1. Library: search, filter by entity type and source, sort, tags, notes,
+   remove, undo removal, bulk selection, empty state, cursor pagination.
+2. History: what was asked, what was selected, which provider answered, the
+   result status, any playlist created, and when — with deletion controls.
+3. Recording sessions, so history has something truthful to show.
+4. Saved explanations, so a kept discovery still explains itself later.
+5. Discography conversations reachable and deletable outside the artist page.
+6. Account-data export, and the documentation the compliance plan requires.
+7. Verifying deleted records are gone from every normal API path.
+
+## Deferred
+
+- **Sharing or public library pages.** No sharing surface exists and none is
+  planned before the private pilot.
+- **Cross-device sync beyond what Postgres already gives.** There is no offline
+  store to reconcile.
+- **Editing a generated playlist after creation.** It lives in the listener's
+  Spotify account; this product records that it made it, and does not manage it.
+- **Re-running a past discovery from history.** Retrieval and ranking have
+  changed between phases, so "the same search" would not give the same result,
+  and presenting it as a replay would be a claim the product cannot honour.
+
+## Boundary interaction
+
+Unchanged in shape. The library stores application-owned records and MusicBrainz
+identifiers. Spotify appears only as an already-created playlist id and its URL
+— the "operationally required" exception recorded in Phase 7 — and never as
+mirrored catalogue metadata. Nothing in `features/library/**` will import an AI
+module or a Spotify provider module, and both directions get lint rules and a
+compliance scan assertion, as Phase 8 did.
+
+Export is the one new risk: an export file is the first artefact that leaves the
+system carrying several tables at once. It must contain application-owned data
+and provider identifiers, not a re-hosted copy of anyone's catalogue.
+
+## Risks
+
+- **A history that starts empty.** Whatever is decided in question 3, most
+  accounts will have little history on day one, and the empty state has to say
+  why without implying something was lost.
+- **Undo and privacy pull in opposite directions.** The compliance requirement
+  is that deleted records are not reachable through normal APIs; undo wants the
+  row to survive a little longer. Question 2.
+- **Export is a data-egress surface.** It is the one feature here that could
+  leak more than intended, and it deserves its own review rather than being
+  treated as a serialisation task.
+- **Bulk delete is irreversible at scale.** A confirmation that a listener
+  clicks through is not a control; the interaction needs to state the count.
+
+## Open questions
+
+1. **Tag storage.** `favorite_discoveries` has no tags column. A `text[]` column
+   is one migration, needs no join, and keeps reads simple — but tags cannot be
+   renamed or merged across a library, and there is no per-user tag vocabulary
+   to offer as suggestions. A separate `favorite_tags` table gives both, at the
+   cost of a join on every library read and more RLS surface to test. My
+   recommendation: the array column, because renaming tags is a feature nobody
+   has asked for and the join cost is paid on the most-viewed page in the app.
+
+2. **Undo removal.** The master prompt requires that deleted records not remain
+   accessible through normal APIs, which rules out a `deleted_at` column that
+   ordinary queries filter out — that is exactly "still there, just hidden". The
+   alternative is a genuine delete with the removed row held in memory in the
+   browser for a short window, so undo re-inserts it. That is honest but loses
+   the undo if the tab closes, and the re-inserted row gets a new id and
+   `created_at`. My recommendation: genuine delete with an in-memory undo
+   window, and the interface saying plainly that leaving the page finalises it.
+
+3. **What history records, and from when.** Nothing writes sessions today, so
+   there is a choice about scope and about the past:
+   - *Scope:* `discovery_sessions.input_kind` is constrained to `('artist',
+     'mood')`, so Phase 8 discography questions are not representable without
+     widening it. Should history cover discovery, mood, and discography
+     questions — or only the first two, leaving conversations to the library?
+   - *The past:* existing accounts have playlists, favourites and conversations
+     but no sessions. Start recording from Phase 9 forward and let history
+     begin empty, or synthesise entries from the rows that do exist? Synthesis
+     would put plausible timestamps on events that were never recorded, which I
+     would not do quietly.
+   My recommendation: widen `input_kind` to include `discography`, record from
+   Phase 9 forward only, and have the empty state say history began when the
+   feature did rather than implying nothing happened.
+
+4. **Saved explanations.** `discovery_results.rationale` exists and is unused.
+   Persisting a Phase 6 explanation means storing model output verbatim with the
+   provider and model that produced it, so a saved discovery still explains
+   itself months later. Not persisting means regenerating on view — which spends
+   an AI request per view, counts against the 20/day cap, and can produce a
+   different explanation than the one that convinced the listener to save it.
+   My recommendation: persist at save time. A library that shows a different
+   reason than the one you kept is worse than one that shows an old reason, and
+   the daily cap makes regeneration genuinely user-visible.
+
+5. **Where discography conversations live.** They are the only Phase 8 records
+   with no home outside the artist page. Options: a library entity type
+   alongside favourites; a history entity; or settings-only bulk deletion with
+   no browsing. This also settles the retention tripwire left open in Phase 8.
+   My recommendation: history, with per-conversation delete. They are a record
+   of what was asked, which is what history is; the library is for things
+   deliberately kept.
+
+6. **Export scope and format.** The compliance plan requires account-data export
+   *documentation*; whether Phase 9 ships the mechanism is a scope decision.
+   Options: a documented manual process; a JSON download of every
+   application-owned row; or JSON plus a human-readable summary. Cost rises with
+   each, and the JSON download is the first feature that emits a
+   multi-table artefact. My recommendation: ship the JSON download in Phase 9,
+   because a data right that requires asking someone is one most people never
+   exercise — but this is a scope decision and it is yours.
+
+7. **Pagination shape.** Cursor-based on `created_at` is stable while rows are
+   being deleted and is what large libraries want; offset pagination is simpler
+   and works with a page-number control. Given bulk delete is in scope, offset
+   pagination will visibly skip rows mid-session. My recommendation: cursor.
