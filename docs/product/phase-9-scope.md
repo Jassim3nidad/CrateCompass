@@ -110,7 +110,29 @@ and provider identifiers, not a re-hosted copy of anyone's catalogue.
 
 ## Open questions
 
-1. **Tag storage.** `favorite_discoveries` has no tags column. A `text[]` column
+1. ~~**Tag storage.**~~ **Closed 2026-08-07.** A `text[]` column on
+   `favorite_discoveries`, folded into the same migration decision 4 requires,
+   with a GIN index so tag filtering stays fast.
+
+   The reasoning below overstated the array's limits and is corrected here.
+   Renaming across a library is `array_replace` in one statement, and a per-user
+   tag vocabulary for autocomplete is `distinct unnest(tags)`. Neither needs a
+   join table. What the array genuinely costs is element-level validation:
+   Postgres CHECK constraints cannot contain subqueries, so "each tag is 1-40
+   characters" cannot be a constraint and needs a `before insert or update`
+   trigger. That trigger trims, lowercases, drops empties, deduplicates and caps
+   the count at 20, which makes case variants the same tag at the database level
+   rather than at every call site.
+
+   Filtering is AND across selected tags, not OR: on a small library OR returns
+   nearly everything and reads as broken. "No favourites yet" and "no favourites
+   match these tags" are distinct empty states, because they need different
+   actions from the listener.
+
+   Reversed only if tags ever need attributes of their own — a colour, a
+   description, an ordering. None is foreseen. Retained below for the reasoning.
+
+   `favorite_discoveries` has no tags column. A `text[]` column
    is one migration, needs no join, and keeps reads simple — but tags cannot be
    renamed or merged across a library, and there is no per-user tag vocabulary
    to offer as suggestions. A separate `favorite_tags` table gives both, at the
