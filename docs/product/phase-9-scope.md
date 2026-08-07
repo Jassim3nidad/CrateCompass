@@ -160,7 +160,25 @@ and provider identifiers, not a re-hosted copy of anyone's catalogue.
    Phase 9 forward only, and have the empty state say history began when the
    feature did rather than implying nothing happened.
 
-4. **Saved explanations.** `discovery_results.rationale` exists and is unused.
+4. ~~**Saved explanations.**~~ **Closed 2026-08-07.** Both, deliberately.
+   `discovery_results` records what a run produced, for history. A separate
+   snapshot is copied onto `favorite_discoveries` at save time: a versioned
+   `jsonb` holding `summary`, `sharedCharacteristics`, `contrast` and
+   `startingPoint`, plus `source`, `model` and provider as plain columns.
+
+   Normalising the two would couple them, and `discovery_results` cascades from
+   `discovery_sessions`, so clearing history would silently strip every saved
+   favourite of the explanation that caused it to be saved. Duplication is the
+   point: the two records answer different questions and must have independent
+   lifetimes.
+
+   `groundedIn` is dropped. It is the verification trace, its job finished when
+   the explanation passed its citation check before first display, and keeping
+   it would invite a later reader to re-verify against evidence that no longer
+   exists. The interface dates a stored explanation as a snapshot rather than
+   presenting it as current. Retained below for the reasoning.
+
+   `discovery_results.rationale` exists and is unused.
    Persisting a Phase 6 explanation means storing model output verbatim with the
    provider and model that produced it, so a saved discovery still explains
    itself months later. Not persisting means regenerating on view — which spends
