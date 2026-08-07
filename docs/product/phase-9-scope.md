@@ -118,7 +118,17 @@ and provider identifiers, not a re-hosted copy of anyone's catalogue.
    recommendation: the array column, because renaming tags is a feature nobody
    has asked for and the join cost is paid on the most-viewed page in the app.
 
-2. **Undo removal.** The master prompt requires that deleted records not remain
+2. ~~**Undo removal.**~~ **Closed 2026-08-07.** Genuine delete, with the removed
+   record held in browser state for roughly ten seconds or until navigation, so
+   undo re-inserts it. Nothing survives server-side that a query could reach.
+   A restored record gets a new id and `created_at`, and the interface says it
+   was re-added rather than pretending it was never removed. Bulk delete states
+   the exact count and offers no undo — an undo that usually fails is worse than
+   none. A residual-data assertion joins the pgTAP suite as a standing guard
+   against a soft-delete regression: after a delete the row is absent from the
+   table, not merely filtered out of a view. Retained below for the reasoning.
+
+   The master prompt requires that deleted records not remain
    accessible through normal APIs, which rules out a `deleted_at` column that
    ordinary queries filter out — that is exactly "still there, just hidden". The
    alternative is a genuine delete with the removed row held in memory in the
