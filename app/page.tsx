@@ -1,7 +1,6 @@
 import {
   ArrowRight,
   BookOpenText,
-  CircleDotDashed,
   Compass,
   Library,
   Sparkles,
@@ -10,7 +9,7 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { StatusBadge } from "@/components/ui/status-badge";
+import { RelationshipMotif } from "@/components/ui/relationship-motif";
 
 const valueCards = [
   {
@@ -25,7 +24,7 @@ const valueCards = [
     description:
       "Write the room, weather, pace, and edges of a mood. CrateCompass turns language into reviewable discovery criteria.",
     icon: Sparkles,
-    accent: "text-[#aa96ff]",
+    accent: "text-[var(--violet-soft)]",
   },
   {
     title: "Read the discography",
@@ -44,9 +43,6 @@ export default function Home() {
         <div className="page-shell relative grid min-h-[calc(100vh-4.25rem)] items-center gap-12 py-16 lg:grid-cols-[minmax(0,1.15fr)_minmax(22rem,0.65fr)]">
           <div className="max-w-4xl">
             <div className="mb-7 flex flex-wrap items-center gap-3">
-              <StatusBadge status="not-configured">
-                Foundation preview
-              </StatusBadge>
               <span className="text-xs font-medium tracking-[0.18em] text-[var(--muted-dim)] uppercase">
                 Discovery, explained
               </span>
@@ -81,35 +77,27 @@ export default function Home() {
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <p className="text-xs font-bold tracking-[0.18em] text-[var(--amber-soft)] uppercase">
-                    Discovery map
+                    How a trail is shaped
                   </p>
                   <h2 className="mt-2 text-xl font-semibold tracking-[-0.03em]">
-                    Ready for a seed artist
+                    One seed, sourced connections
                   </h2>
                 </div>
-                <CircleDotDashed
+                <Compass
                   aria-hidden="true"
-                  className="size-7 text-[var(--muted-dim)]"
+                  className="size-7 shrink-0 text-[var(--violet-soft)]"
                 />
               </div>
             </div>
-            <div
-              className="relative min-h-80 p-6"
-              aria-label="Empty relationship map preview"
-            >
-              <div
-                aria-hidden="true"
-                className="absolute top-1/2 left-1/2 size-52 -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed border-[var(--border-strong)]"
+            <div className="p-6">
+              <RelationshipMotif
+                className="mx-auto max-w-72"
+                label="An illustration of the discovery model: one seed artist at the centre, with connections radiating to related artists."
               />
-              <div
-                aria-hidden="true"
-                className="absolute top-1/2 left-1/2 size-32 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[var(--border)]"
-              />
-              <div className="absolute top-1/2 left-1/2 grid size-22 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-[color-mix(in_srgb,var(--violet)_45%,var(--border))] bg-[var(--surface-raised)] shadow-[0_0_60px_rgba(115,87,232,0.2)]">
-                <Compass aria-hidden="true" className="size-7 text-[#aa96ff]" />
-              </div>
-              <p className="absolute inset-x-6 bottom-6 text-center text-sm leading-6 text-[var(--muted)]">
-                No provider data is shown in this foundation preview.
+              <p className="mt-4 text-center text-sm leading-6 text-[var(--muted)]">
+                Every connection you see in CrateCompass names the provider that
+                reported it. This illustration names none, because it is drawn
+                rather than retrieved.
               </p>
             </div>
           </Card>
@@ -135,7 +123,8 @@ export default function Home() {
               <Card
                 key={item.title}
                 variant={index === 1 ? "accent" : "default"}
-                className="min-h-64"
+                className="motion-rise motion-stagger min-h-64"
+                style={{ "--stagger-index": index } as React.CSSProperties}
               >
                 <Icon aria-hidden="true" className={`size-6 ${item.accent}`} />
                 <h3 className="mt-14 text-2xl font-semibold tracking-[-0.035em]">

@@ -15,6 +15,11 @@
      and the previous #856cf0 gave it 3.88:1 — below AA. Automated scans missed
      it for two phases because no button was ever hovered during a scan. */
   --violet-strong: #6344d9;
+  /* The readable end of the violet family: 7.9:1 on --background, 7.4:1 on
+     --surface. Text and icons use this; --violet is a fill colour and fails as
+     a foreground. It existed as a literal #aa96ff in two places before Phase 10
+     named it, which is why the home page had a colour the token set did not. */
+  --violet-soft: #aa96ff;
   --amber: #d89b45;
   --amber-soft: #edbc75;
   --electric: #57a6dd;
@@ -23,8 +28,28 @@
   --danger: #c45c67;
   --danger-soft: #f19aa3;
   --focus: #9c87f5;
+  /* The accent family's text alias. Referenced by /settings before Phase 10 and
+     never defined, so the declaration was invalid and the link fell back to
+     inherited colour. */
+  --accent-soft: var(--violet-soft);
   --radius-lg: 1.5rem;
   --radius-md: 1rem;
+
+  /* Motion. Four durations and two curves, so a transition is chosen from a
+     scale rather than invented per component. --ease-out decelerates hard,
+     which is what makes a short entrance read as settling rather than sliding. */
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 320ms;
+  --duration-slower: 560ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --stagger-step: 55ms;
+
+  /* Elevation, as a scale rather than per-component shadow literals. */
+  --elevation-1: 0 1px 2px rgb(0 0 0 / 0.3);
+  --elevation-2: 0 12px 32px rgb(0 0 0 / 0.22);
+  --elevation-3: 0 24px 80px rgb(0 0 0 / 0.28);
 }
 
 @theme inline {
@@ -97,6 +122,20 @@ summary {
   padding: clamp(2rem, 5vw, 5rem) clamp(1rem, 4vw, 2rem);
 }
 
+/**
+ * The one focus indicator.
+ *
+ * `outline` rather than a ring-plus-offset pair: the offset in Tailwind's ring
+ * utilities paints a solid band of a *fixed* colour, so the same class produced
+ * a correct halo on the page background and a dark seam inside a lighter card.
+ * An outline follows `border-radius`, needs no background colour, and survives
+ * forced-colors mode, where box-shadow is discarded.
+ */
+.focus-ring:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: var(--focus-ring-offset, 2px);
+}
+
 .compass-grid {
   background-image:
     linear-gradient(rgb(255 255 255 / 0.035) 1px, transparent 1px),
@@ -149,6 +188,121 @@ summary {
   }
   to {
     background-position: -200% 0;
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 0.75rem, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes settle-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 0.375rem, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes expand-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -0.375rem, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes confirm-pop {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.14);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes orbit-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes draw-in {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/**
+ * Motion utilities.
+ *
+ * Declared *inside* `no-preference` rather than relying on the reduce block
+ * below to neutralise them. Two reasons: an element's resting state is then its
+ * natural one, so nothing depends on a `!important` override landing correctly;
+ * and a reduced-motion user never has an animation applied at all, rather than
+ * one compressed to 0.01ms.
+ *
+ * `both` fill is load-bearing for staggering — during its delay an element must
+ * hold the `from` frame, not flash at full opacity and then start.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .motion-rise {
+    animation: rise-in var(--duration-slow) var(--ease-out) both;
+  }
+
+  .motion-settle {
+    animation: settle-in var(--duration-slow) var(--ease-out) both;
+  }
+
+  .motion-expand {
+    animation: expand-in var(--duration-base) var(--ease-out) both;
+  }
+
+  .motion-confirm {
+    animation: confirm-pop var(--duration-slow) var(--ease-out);
+  }
+
+  .motion-orbit {
+    animation: orbit-in var(--duration-slower) var(--ease-out) both;
+  }
+
+  .motion-draw {
+    stroke-dasharray: var(--draw-length);
+    stroke-dashoffset: var(--draw-length);
+    animation: draw-in var(--duration-slower) var(--ease-out) forwards;
+  }
+
+  /* Composed with any of the above. Callers cap the index so a long list does
+     not push its last item past roughly half a second. */
+  .motion-stagger {
+    animation-delay: calc(var(--stagger-index, 0) * var(--stagger-step));
+  }
+
+  /* Page entrance. `.page-shell` is the per-route wrapper and unmounts on
+     navigation, so this runs once per view without a client-side transition
+     coordinator and without delaying the navigation itself. */
+  .page-shell {
+    animation: settle-in var(--duration-slow) var(--ease-out) both;
   }
 }
 

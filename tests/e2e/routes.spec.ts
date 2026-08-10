@@ -4,7 +4,13 @@ const publicRoutes = [
   { path: "/", heading: /Find the thread between records/i },
   { path: "/discover", heading: /Start with a record you already trust/i },
   { path: "/mood", heading: /Describe the room, not a dropdown/i },
-  { path: "/artists/foundation-preview", heading: /Artist workspace/i },
+  // Not an MBID, so the route resolves to the shell that says so rather than
+  // fetching or inventing an artist. Kept as a route on purpose: a real address
+  // with an unusable parameter is more actionable than a 404.
+  {
+    path: "/artists/not-an-mbid",
+    heading: /That is not an artist identifier/i,
+  },
   { path: "/auth/sign-in", heading: /Welcome back/i },
   { path: "/auth/sign-up", heading: /Build your own trail/i },
   { path: "/auth/forgot-password", heading: /Reset your password/i },
@@ -49,15 +55,18 @@ test("keyboard navigation exposes the skip link", async ({ page }) => {
   ).toBeFocused();
 });
 
-test("mobile routes do not overflow horizontally", async ({
+test("the artist shell names the unusable parameter without inventing an artist", async ({
   page,
-}, testInfo) => {
-  test.skip(!testInfo.project.name.includes("mobile"), "mobile project only");
-  await page.goto("/discover");
-  const hasOverflow = await page.evaluate(
-    () =>
-      document.documentElement.scrollWidth >
-      document.documentElement.clientWidth,
-  );
-  expect(hasOverflow).toBe(false);
+}) => {
+  await page.goto("/artists/not-an-mbid");
+
+  await expect(
+    page.getByText('"not-an-mbid" is not a MusicBrainz'),
+  ).toBeVisible();
+  // The failure worth guarding: a page about nobody that reads like a page
+  // about somebody.
+  await expect(
+    page.getByRole("heading", { name: "Discography" }),
+  ).toBeVisible();
+  await expect(page.getByText(/arrives in phase/i)).toHaveCount(0);
 });

@@ -1,7 +1,6 @@
 # CrateCompass — session handoff
 
-Written: 2026-08-06 · HEAD: `330faea` · Branch: `master`, clean, synced with
-`origin/master`
+Written: 2026-08-10 · Branch: `master`, clean, synced with `origin/master`
 
 Feed this to a new session together with the master system prompt. It covers
 state, hard constraints, environment quirks, and the decisions currently
@@ -11,8 +10,8 @@ blocking progress. Everything here is verified unless marked otherwise.
 
 ## 1. Where the project is
 
-Phases 0–7 are complete, verified, and pushed. Phase 8 is **scoped but not
-started**, and is blocked on four decisions the project owner has not answered.
+Phases 0–10 are complete, verified, and pushed. Phase 11 (production hardening
+and private-pilot release) has not started and needs separate approval.
 
 | Phase | State |
 | --- | --- |
@@ -24,22 +23,19 @@ started**, and is blocked on four decisions the project owner has not answered.
 | 5 AI abstraction + safety boundary | Complete |
 | 6 Similar-artist discovery | Complete |
 | 7 Natural-language mood playlists | Complete |
-| 8 Discography explorer + Q&A | **Scoped only — do not start** |
-| 9–12 | Not started |
+| 8 Discography explorer + Q&A | Complete |
+| 9 Library, history, data rights | Complete |
+| 10 UI/UX polish and motion | Complete |
+| 11 Production hardening + private pilot | **Not started — needs approval** |
 
-Recent commits, newest first:
-
-```
-330faea Fix silent release-group truncation at 25
-c86b5bc Add Phase 8 scoping document
-4edd671 Close Phase 7 gaps: authenticated e2e, staged progress, tracked follow-up
-d7575bd Phase 7: natural-language mood playlists
-e5cf4bb Phase 7 preconditions: public scope, docs, and cost visibility
-```
+Note the renumbering. The roadmap listed hardening as Phase 10; the master
+prompt's Phase 10 is UI/UX polish and motion. Polish was implemented as Phase 10
+and hardening became Phase 11, which also resolves the roadmap ending at 10
+while this document already referred to "Phases 9–12".
 
 **The working process is a hard rule.** Each phase is inspected, planned,
 approved, implemented, verified, and reported before the next begins. Do not
-start Phase 8 implementation without explicit approval — the owner ended the
+start Phase 11 implementation without explicit approval — the owner ended the
 last session with "wait for my explicit go-ahead before doing anything else".
 
 ---
@@ -234,26 +230,22 @@ to hold off wiring it publicly; this was flagged and left in place because the
 previous wording ("the private-playlist permission") is now factually wrong.
 The owner may ask for it to be reverted to neutral wording.
 
-### Blocking Phase 8
+### Blocking Phase 11
 
-Four decisions from `docs/product/phase-8-scope.md`, all unanswered:
+Nothing yet. Phase 11 is production hardening and the private-pilot release:
+observability, runbooks, backups, CSP and security headers, dependency and
+secret scanning, deployment and rollback, and the compliance re-review. Its
+preconditions are operational rather than product decisions, and the roadmap
+lists them.
 
-1. **Retrieval bound.** Show all release groups, or bound the display for
-   prolific artists? (The retrieval *mechanism* is now settled by `330faea`;
-   this is only about what the explorer surfaces.)
-2. **Q&A usage limits.** 4/min and 20/day makes a conversation stop after four
-   questions. Raise for this operation, show remaining quota, or meter
-   conversations rather than questions? This is a cost decision.
-3. **Conversation retention** default until Phase 9 owns deletion controls.
-4. **Injection handling depth.** Release titles are community-edited and reach
-   the model as context. Citation verification catches a manipulated *answer* —
-   should the text also be neutralised on the way in?
+Two things Phase 11 will have to decide rather than inherit:
 
-Phase 8 already has unusual amounts of groundwork: `answerDiscographyQuestion`
-exists on the AI port and is contract-tested; `discographyAnswerSchema` treats
-"not enough context" as a first-class success; the `discography_conversations`
-and `discography_messages` tables exist with RLS from Phase 2 and are still
-unused.
+- **Whether the private pilot goes ahead under Development Mode.** The five-user
+  allowlist is an assumption from Phase 0 that has never been tested against a
+  real user list.
+- **Lighthouse in CI.** Phase 10 ran it manually (see §5); it is not a
+  dependency and nothing enforces a score. Making it a gate is a Phase 11
+  choice, and requires deciding which numbers are allowed to regress.
 
 ---
 
@@ -287,10 +279,12 @@ docs/                    architecture (+5 ADRs), compliance, product, project,
 
 Key documents: `docs/architecture/provider-boundaries.md` (the boundary rules),
 `docs/compliance/spotify-compliance.md`, `docs/project/implementation-roadmap.md`
-(phase plan + tracked follow-ups), `docs/product/phase-8-scope.md` (next work).
+(phase plan + tracked follow-ups), `docs/product/phase-10-design-system.md`
+(tokens, motion, focus, and the accessibility gate).
 
-Note: the root `README.md` is from Phase 1 and is stale. It has not been updated
-since; Phase 12 owns documentation.
+Note: the root `README.md` is from Phase 1 and is stale. Phase 11 owns the
+documentation pass — it was previously attributed to a "Phase 12" that the
+roadmap never defined.
 
 ---
 

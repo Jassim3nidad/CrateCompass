@@ -1,4 +1,4 @@
-import { ShieldCheck, UserRound } from "lucide-react";
+import { ArrowRight, ShieldCheck, UserRound } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -14,6 +14,10 @@ import {
   DeleteAccountForm,
   ProfileForm,
 } from "@/features/auth/components/account-forms";
+import {
+  readProviderReadiness,
+  type SpotifyConnectionState,
+} from "@/lib/providers/readiness";
 import { getAuthenticatedUser } from "@/lib/supabase/auth";
 
 export const metadata: Metadata = { title: "Settings" };
@@ -32,6 +36,13 @@ export default async function SettingsPage({
       .single(),
     supabase.from("spotify_connections").select("status").maybeSingle(),
   ]);
+
+  const connectionState: SpotifyConnectionState = !spotifyConnection
+    ? "none"
+    : spotifyConnection.status === "active"
+      ? "active"
+      : "needs-attention";
+  const providers = readProviderReadiness(connectionState);
 
   return (
     <div className="page-shell">
@@ -74,30 +85,23 @@ export default async function SettingsPage({
             <ProviderStatus
               name="Supabase"
               status="available"
-              description="Authentication, sessions, profiles, and RLS are active."
+              description="Authentication, sessions, profiles, and RLS are active — you are reading this through them."
             />
-            <ProviderStatus
-              name="Spotify"
-              status={
-                spotifyConnection?.status === "active"
-                  ? "available"
-                  : spotifyConnection
-                    ? "degraded"
-                    : "not-configured"
-              }
-              description="Optional connected account. Manage it under Connections."
-            />
+            {providers.map((provider) => (
+              <ProviderStatus
+                key={provider.name}
+                name={provider.name}
+                status={provider.status}
+                description={provider.description}
+              />
+            ))}
             <Link
               href="/settings/connections"
-              className="inline-flex min-h-11 items-center text-sm font-semibold text-[var(--accent-soft)] underline underline-offset-4"
+              className="focus-ring inline-flex min-h-11 items-center gap-2 rounded-full text-sm font-semibold text-[var(--accent-soft)] underline underline-offset-4 transition-colors duration-[var(--duration-fast)] hover:text-[var(--foreground)] motion-reduce:transition-none"
             >
               Manage Spotify connection
+              <ArrowRight aria-hidden="true" className="size-4" />
             </Link>
-            <ProviderStatus
-              name="MusicBrainz"
-              status="not-configured"
-              description="Canonical identity and discography arrive in Phase 4."
-            />
           </div>
         </Card>
 

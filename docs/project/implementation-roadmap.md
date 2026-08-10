@@ -269,39 +269,49 @@ account deletion cascades — a listener who deletes their account takes their
 conversations with them today. What is missing is *selective* deletion, which is
 Phase 9's scope, and the retention cost above, which is this note's.
 
-### Tracked follow-up: e2e sign-in assertions are timing-sensitive
+### ~~Tracked follow-up: e2e sign-in assertions are timing-sensitive~~
 
-Three specs — `auth`, `spotify-connections`, and the keyboard case in
-`discovery` — asserted a post-sign-in navigation on Playwright's default
-five-second timeout, while every other spec in the suite already used twenty.
-Sign-in through the dev server takes seven to thirteen seconds on a loaded
-machine, so those assertions were marginal and began failing during Phase 9 as
-the suite grew.
+**Closed in Phase 10.** Three specs — `auth`, `spotify-connections`, and the
+keyboard case in `discovery` — asserted a post-sign-in navigation on
+Playwright's default five-second timeout, while every other spec in the suite
+already used twenty. Sign-in through the dev server takes seven to thirteen
+seconds on a loaded machine, so which assertions were marginal depended on which
+had remembered to pass an override.
 
-The product is not slow in production; `next dev` compiles on demand and the
-suite now creates far more accounts than it did. The assertions were aligned
-with the rest of the suite rather than the timeout being treated as a defect.
+Phase 10 raised the floor instead: `expect: { timeout: 20_000 }` in
+`playwright.config.ts`. That removes the class of defect rather than the
+instances of it, and it cannot mask a real regression — a genuinely broken
+navigation never arrives, so it still fails, only later.
 
-Worth revisiting if it recurs: `retries: 0` locally against `retries: 2` in CI
-means a marginal test fails outright on a developer machine and passes in CI,
-which is the wrong way round for catching real regressions.
+The load half of the problem was also real and was reduced rather than absorbed.
+Adding four authenticated axe scans initially pushed the `spotify-connections`
+a11y case past its own 60-second timeout; the four were collapsed into one test
+sharing a single sign-in, which cut the accessibility suite from 4.6 to 2.6
+minutes while covering strictly more.
 
-### Tracked follow-up: suggested questions are static
+Still true and still worth watching: `retries: 0` locally against `retries: 2`
+in CI means a marginal test fails outright on a developer machine and passes in
+CI, which is the wrong way round for catching real regressions.
 
-The Q&A panel offers four fixed prompts ("What was their first studio album?",
-"Did they release any live albums?", and two more). They are not derived from
-what the retrieved records can actually answer, so on a sparse artist a
-suggestion can lead straight to an honest refusal — the product suggesting a
-question it then declines.
+### ~~Tracked follow-up: suggested questions are static~~
 
-Not wrong, but weaker than it looks: the refusal is correct behaviour, and the
-suggestion is what makes it feel like a failure. Deriving them is cheap once the
-timeline is in hand — offer the live-album question only when a live release
-exists, the decade question only for an artist spanning one — and it is pure
-logic over `Discography`, needing no provider call and no schema change.
+**Closed in Phase 10.** The Q&A panel offered four fixed prompts that were not
+derived from what the retrieved records could answer, so on a sparse artist a
+suggestion led straight to an honest refusal — the product suggesting a question
+it then declined.
 
-Worth doing when the Q&A panel is next touched. It is a polish item, not a
-correctness one, so Phase 10 is the natural home unless it surfaces earlier.
+`lib/discography/suggestions.ts` derives them from the timeline instead: the
+live-album prompt appears only when a live release exists, the decade prompt
+names the decade that actually holds the most albums, and the EP prompt needs
+two EPs before it will offer to list them. Two rules hold throughout — a
+suggestion is offered only when the records that answer it are present, and
+nothing requiring a total is offered when `retrievalComplete` is false, because
+a count over a truncated list is a wrong answer delivered confidently.
+
+Pure over the domain type, no provider call, no schema change. Covered by
+`tests/unit/discography-suggestions.test.ts`, including the decade tie-break —
+without it the same artist would be asked about a different decade depending on
+retrieval order.
 
 ### Exit gate
 
@@ -338,7 +348,51 @@ Approve Phase 9 separately.
 
 Approve Phase 10 separately.
 
-## Phase 10 — Production hardening and private-pilot release
+## Phase 10 — UI/UX polish and motion
+
+Complete. No business logic, schema, provider integration, or AI-boundary
+change: the phase was explicitly constrained to presentation.
+
+### Scope
+
+- A distinctive identity: token set completed, focus indicator consolidated,
+  elevation and motion scales introduced. Recorded in
+  `docs/product/phase-10-design-system.md`.
+- Restrained motion on six surfaces — page entrance, discovery-card stagger,
+  explanation expansion, save confirmation, mood-workflow stages, and the
+  relationship motif — declared inside `prefers-reduced-motion: no-preference`
+  so a reduced-motion user gets no animation rather than a compressed one.
+- Stale scaffolding removed: five phase-preview notices, the unused
+  `features/foundation/` module, the `PhaseNotice` component, and the
+  `/artists/foundation-preview` navigation entry.
+- Provider readiness on `/settings` reads the validated environment instead of
+  hard-coded strings that had claimed MusicBrainz "arrives in Phase 4" for four
+  phases after it shipped.
+- The mobile menu became a real disclosure rather than a `<details>` element.
+- Both Phase 9 tracked follow-ups closed; see above.
+
+### Defects found and fixed along the way
+
+- `--accent-soft` was referenced by `/settings` and never defined, so the
+  declaration was invalid and the link inherited body colour.
+- The Tailwind focus-ring offset painted a fixed background colour, producing a
+  dark seam wherever a focusable element sat on a lighter surface.
+- Passing the navigation list to the new client component serialised a Lucide
+  icon function across the server boundary. It typechecked and failed at
+  runtime, which is why the e2e gate caught it and the type gate did not.
+
+### Verification
+
+Formatting, lint, strict type-check, unit/integration/contract/compliance,
+end-to-end, accessibility, pgTAP, database reset and lint, live database, live
+providers, and production build. Responsive coverage is 63 overflow cases across
+7 widths and 9 routes, plus 200% reflow and WCAG 2.2 target size.
+
+### Exit gate
+
+Approve Phase 11 separately.
+
+## Phase 11 — Production hardening and private-pilot release
 
 ### Scope
 

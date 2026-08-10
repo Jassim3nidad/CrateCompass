@@ -1,12 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import {
-  Compass,
-  Disc3,
-  History,
-  Library,
-  Settings,
-  Sparkles,
-} from "lucide-react";
+import { Compass, History, Library, Settings, Sparkles } from "lucide-react";
 
 export interface NavigationItem {
   readonly href: string;
@@ -42,13 +35,11 @@ export const primaryNavigation: readonly NavigationItem[] = [
   },
 ];
 
+// `/artists/[artistId]` is reachable from every discovery result and from the
+// library, and there is no artist to name without one — so it is deliberately
+// absent here. Phase 1 listed it pointing at a placeholder identifier, which
+// offered a listener a menu entry leading to a page about nothing.
 export const secondaryNavigation: readonly NavigationItem[] = [
-  {
-    href: "/artists/foundation-preview",
-    label: "Artist view",
-    description: "Preview the artist workspace",
-    icon: Disc3,
-  },
   {
     href: "/settings",
     label: "Settings",

@@ -77,38 +77,56 @@ export function WorkflowProgress({ stage }: { readonly stage: WorkflowStage }) {
       aria-live="polite"
       className="space-y-3 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-subtle)] p-4"
     >
-      {STAGES.map((entry) => {
+      {STAGES.map((entry, index) => {
         const isDone = completed.has(entry.id);
         const isActive = entry.id === stage;
+        const isLast = index === STAGES.length - 1;
 
         return (
           <li key={entry.id} className="flex gap-3">
-            <span className="mt-0.5 shrink-0">
-              {isDone ? (
-                <Check
-                  aria-hidden="true"
-                  className="size-4 text-[var(--success-soft)]"
-                />
-              ) : isActive ? (
-                <Loader2
-                  aria-hidden="true"
-                  className="size-4 animate-spin text-[var(--violet)] motion-reduce:animate-none"
-                />
-              ) : (
+            {/* The marker column doubles as the connector: a rail between the
+                steps that fills as each one completes, so progress is legible
+                from the shape of the list and not only from its icons. */}
+            <span className="flex shrink-0 flex-col items-center">
+              <span className="mt-0.5 block">
+                {isDone ? (
+                  // Keyed on the state, so React swaps the node and the pop
+                  // plays at the moment the step completes rather than on
+                  // every re-render of a step that completed earlier.
+                  <Check
+                    key="done"
+                    aria-hidden="true"
+                    className="motion-confirm size-4 text-[var(--success-soft)]"
+                  />
+                ) : isActive ? (
+                  <Loader2
+                    aria-hidden="true"
+                    className="size-4 animate-spin text-[var(--violet-soft)] motion-reduce:animate-none"
+                  />
+                ) : (
+                  <span
+                    aria-hidden="true"
+                    className="block size-4 rounded-full border border-[var(--border-strong)]"
+                  />
+                )}
+              </span>
+              {isLast ? null : (
                 <span
                   aria-hidden="true"
-                  className="block size-4 rounded-full border border-[var(--border-strong)]"
+                  className={`mt-1 w-px flex-1 transition-colors duration-[var(--duration-slow)] ease-[var(--ease-out)] motion-reduce:transition-none ${
+                    isDone ? "bg-[var(--success)]" : "bg-[var(--border)]"
+                  }`}
                 />
               )}
             </span>
 
-            <span className="min-w-0">
+            <span className="min-w-0 pb-1">
               <span
-                className={
+                className={`block text-sm transition-colors duration-[var(--duration-base)] motion-reduce:transition-none ${
                   isActive
-                    ? "block text-sm font-semibold text-[var(--foreground)]"
-                    : "block text-sm text-[var(--muted)]"
-                }
+                    ? "font-semibold text-[var(--foreground)]"
+                    : "text-[var(--muted)]"
+                }`}
               >
                 {entry.label}
                 {isDone ? <span className="sr-only"> — complete</span> : null}
@@ -117,7 +135,7 @@ export function WorkflowProgress({ stage }: { readonly stage: WorkflowStage }) {
                 ) : null}
               </span>
               {isActive ? (
-                <span className="mt-1 block text-xs leading-5 text-[var(--muted)]">
+                <span className="motion-expand mt-1 block text-xs leading-5 text-[var(--muted)]">
                   {entry.detail}
                 </span>
               ) : null}

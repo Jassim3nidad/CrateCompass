@@ -33,19 +33,13 @@ import type { ConversationMessage } from "@/features/discography/repository";
  * is exactly the defect the silent release-group truncation was.
  */
 
-const SUGGESTED_QUESTIONS = [
-  "What was their first studio album?",
-  "Which albums came out in the 2010s?",
-  "List their EPs in chronological order.",
-  "Did they release any live albums?",
-];
-
 export function QuestionPanel({
   artistMbid,
   artistName,
   signedIn,
   remainingQuota,
   initialMessages,
+  suggestions,
 }: {
   readonly artistMbid: string;
   readonly artistName: string;
@@ -53,6 +47,12 @@ export function QuestionPanel({
   /** Null when the count could not be read; the figure is then omitted. */
   readonly remainingQuota: number | null;
   readonly initialMessages: readonly ConversationMessage[];
+  /**
+   * Derived from the retrieved timeline by `suggestedQuestions`, so every
+   * prompt offered is one these records can answer. Empty on a sparse artist,
+   * and the block is then omitted rather than padded.
+   */
+  readonly suggestions: readonly string[];
 }) {
   const questionId = useId();
   const [question, setQuestion] = useState("");
@@ -162,29 +162,35 @@ export function QuestionPanel({
         </div>
 
         {signedIn ? (
-          <div>
-            <p className="text-xs text-[var(--muted-dim)]">
-              Questions these records can answer:
-            </p>
-            <ul className="mt-2 flex flex-wrap gap-2">
-              {SUGGESTED_QUESTIONS.map((suggestion) => (
-                <li key={suggestion}>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    disabled={pending}
-                    onClick={() => {
-                      setQuestion(suggestion);
-                      ask(suggestion);
-                    }}
+          suggestions.length > 0 ? (
+            <div>
+              <p className="text-xs text-[var(--muted-dim)]">
+                Questions these records can answer:
+              </p>
+              <ul className="mt-2 flex flex-wrap gap-2">
+                {suggestions.map((suggestion, index) => (
+                  <li
+                    key={suggestion}
+                    className="motion-rise motion-stagger"
+                    style={{ "--stagger-index": index } as React.CSSProperties}
                   >
-                    {suggestion}
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      disabled={pending}
+                      onClick={() => {
+                        setQuestion(suggestion);
+                        ask(suggestion);
+                      }}
+                    >
+                      {suggestion}
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null
         ) : (
           <p className="text-sm text-[var(--muted)]">
             Sign in to ask questions. Browsing the releases above needs no
@@ -231,7 +237,7 @@ function Outcome({ result }: { readonly result: AskResult }) {
                       href={citation.sourceUrl}
                       target="_blank"
                       rel="noreferrer noopener"
-                      className="ml-2 inline-flex items-center gap-1 rounded text-[var(--muted)] underline underline-offset-2 hover:text-[var(--foreground)] focus-visible:ring-2 focus-visible:ring-[var(--focus)] focus-visible:outline-none"
+                      className="focus-ring ml-2 inline-flex items-center gap-1 rounded text-[var(--muted)] underline underline-offset-2 hover:text-[var(--foreground)]"
                     >
                       <ExternalLink aria-hidden="true" className="size-3" />
                       MusicBrainz

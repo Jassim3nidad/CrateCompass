@@ -43,7 +43,7 @@ export function SpotifyLink({
         href={state.url}
         target="_blank"
         rel="noreferrer noopener"
-        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-[var(--border-strong)] bg-[var(--surface)] px-4 text-sm font-semibold text-[var(--foreground)] transition-colors hover:bg-[var(--surface-raised)] focus-visible:ring-2 focus-visible:ring-[var(--focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--background)] focus-visible:outline-none"
+        className="focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-[var(--border-strong)] bg-[var(--surface)] px-4 text-sm font-semibold text-[var(--foreground)] transition-colors hover:bg-[var(--surface-raised)]"
       >
         <ExternalLink aria-hidden="true" className="size-4" />
         Open {state.name} in Spotify
@@ -77,7 +77,7 @@ export function SpotifyLink({
                   href={option.url}
                   target="_blank"
                   rel="noreferrer noopener"
-                  className="rounded text-sm text-[var(--foreground)] underline underline-offset-2 focus-visible:ring-2 focus-visible:ring-[var(--focus)] focus-visible:outline-none"
+                  className="focus-ring rounded text-sm text-[var(--foreground)] underline underline-offset-2"
                 >
                   {option.name}
                   <span className="sr-only">
@@ -105,7 +105,7 @@ export function SpotifyLink({
           {state.message}{" "}
           <a
             href="/settings/connections"
-            className="rounded underline underline-offset-2 hover:text-[var(--foreground)] focus-visible:ring-2 focus-visible:ring-[var(--focus)] focus-visible:outline-none"
+            className="focus-ring rounded underline underline-offset-2 hover:text-[var(--foreground)]"
           >
             Manage connections
           </a>

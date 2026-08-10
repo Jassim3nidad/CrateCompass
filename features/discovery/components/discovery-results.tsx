@@ -156,8 +156,22 @@ export function DiscoveryResults({
       ) : null}
 
       <ol className="space-y-4">
-        {candidates.map((candidate) => (
-          <li key={candidate.mbid}>
+        {candidates.map((candidate, index) => (
+          // Keyed on the MBID, so React keeps the node across a dismissal and
+          // the entrance plays once per card rather than replaying down the
+          // whole list every time one leaves. A restored card remounts and
+          // animates back in, which is the intent.
+          <li
+            key={candidate.mbid}
+            className="motion-rise motion-stagger"
+            style={
+              {
+                // Capped: without it, "load more" would hand the twenty-fourth
+                // card a 1.3-second delay and read as a hang.
+                "--stagger-index": Math.min(index, 6),
+              } as React.CSSProperties
+            }
+          >
             <DiscoveryCard
               seedMbid={seedMbid}
               seedName={seedName}

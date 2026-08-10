@@ -8,7 +8,7 @@ const cardVariants = cva("rounded-[var(--radius-lg)] border p-5 sm:p-6", {
     variant: {
       default: "border-[var(--border)] bg-[var(--surface)]",
       raised:
-        "border-[var(--border-strong)] bg-[var(--surface-raised)] shadow-[0_24px_80px_rgba(0,0,0,0.2)]",
+        "border-[var(--border-strong)] bg-[var(--surface-raised)] shadow-[var(--elevation-3)]",
       accent:
         "border-[color-mix(in_srgb,var(--violet)_40%,var(--border))] bg-[linear-gradient(145deg,color-mix(in_srgb,var(--violet)_15%,var(--surface)),var(--surface))]",
       quiet: "border-transparent bg-[var(--surface-subtle)]",

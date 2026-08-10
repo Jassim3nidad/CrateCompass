@@ -60,7 +60,7 @@ export function ProfileForm({
           id="preferred-ai-provider"
           name="preferredAiProvider"
           defaultValue={preferredAiProvider}
-          className="min-h-11 w-full rounded-2xl border border-[var(--border-strong)] bg-[var(--surface)] px-4 text-sm"
+          className="focus-ring min-h-12 w-full rounded-2xl border border-[var(--border-strong)] bg-[var(--surface)] px-4 text-sm text-[var(--foreground)] transition-colors duration-[var(--duration-fast)] hover:border-[var(--muted-dim)] motion-reduce:transition-none"
         >
           <option value="openai">OpenAI</option>
           <option value="anthropic">Anthropic</option>

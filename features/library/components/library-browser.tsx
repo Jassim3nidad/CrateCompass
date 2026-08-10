@@ -200,7 +200,7 @@ export function LibraryBrowser({
               id={`${searchId}-sort`}
               value={sort}
               onChange={(event) => navigate({ sort: event.target.value })}
-              className="mt-2 min-h-11 w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--foreground)] focus-visible:ring-2 focus-visible:ring-[var(--focus)] focus-visible:outline-none"
+              className="focus-ring mt-2 min-h-11 w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--foreground)]"
             >
               {SORT_MODES.map((mode) => (
                 <option key={mode} value={mode}>

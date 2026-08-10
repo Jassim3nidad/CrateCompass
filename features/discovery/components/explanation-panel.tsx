@@ -77,13 +77,16 @@ export function ExplanationPanel({
         onClick={toggle}
         aria-expanded={expanded}
         aria-controls={panelId}
-        className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--border-strong)] bg-[var(--surface)] px-4 text-sm font-semibold text-[var(--foreground)] transition-colors hover:bg-[var(--surface-raised)] focus-visible:ring-2 focus-visible:ring-[var(--focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--background)] focus-visible:outline-none"
+        className="focus-ring inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--border-strong)] bg-[var(--surface)] px-4 text-sm font-semibold text-[var(--foreground)] transition-colors duration-[var(--duration-fast)] hover:bg-[var(--surface-raised)] motion-reduce:transition-none"
       >
-        <Sparkles aria-hidden="true" className="size-4 text-[var(--violet)]" />
+        <Sparkles
+          aria-hidden="true"
+          className="size-4 text-[var(--violet-soft)]"
+        />
         Why this match?
         <ChevronDown
           aria-hidden="true"
-          className={`size-4 transition-transform motion-reduce:transition-none ${expanded ? "rotate-180" : ""}`}
+          className={`size-4 transition-transform duration-[var(--duration-base)] ease-[var(--ease-out)] motion-reduce:transition-none ${expanded ? "rotate-180" : ""}`}
         />
       </button>
 
@@ -93,7 +96,10 @@ export function ExplanationPanel({
         aria-labelledby={buttonId}
         hidden={!expanded}
         aria-busy={pending}
-        className="mt-4 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-subtle)] p-4"
+        // `hidden` is `display: none`, which takes the element out of the box
+        // tree entirely — so the entrance restarts every time it is reopened
+        // rather than playing once and never again.
+        className="motion-expand mt-4 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-subtle)] p-4"
       >
         {pending ? (
           <div>
@@ -202,7 +208,7 @@ export function ExplanationPanel({
                         href={result.explanation.startingPoint.sourceUrl}
                         target="_blank"
                         rel="noreferrer noopener"
-                        className="rounded underline underline-offset-2 hover:text-[var(--foreground)] focus-visible:ring-2 focus-visible:ring-[var(--focus)] focus-visible:outline-none"
+                        className="focus-ring rounded underline underline-offset-2 hover:text-[var(--foreground)]"
                       >
                         MusicBrainz record
                       </a>

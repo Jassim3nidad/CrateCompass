@@ -44,6 +44,23 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   ...continuousIntegrationSettings,
+  /**
+   * Twenty seconds for every assertion, rather than five by default with a
+   * handful of per-assertion overrides.
+   *
+   * Roadmap follow-up "e2e sign-in assertions are timing-sensitive": three
+   * specs asserted a post-sign-in navigation on the five-second default while
+   * the rest of the suite passed 20_000 by hand. Sign-in through `next dev`
+   * takes seven to thirteen seconds on a loaded machine, so which specs were
+   * marginal depended on which had remembered the override. With `retries: 0`
+   * locally and `retries: 2` in CI, a marginal assertion fails on a developer
+   * machine and passes in CI — the wrong way round.
+   *
+   * Raising the floor removes the class of defect instead of the symptom. It
+   * cannot mask a real regression: a genuinely broken navigation never
+   * arrives, so it still fails, only later.
+   */
+  expect: { timeout: 20_000 },
   reporter: [["list"], ["html", { open: "never" }]],
   use: {
     baseURL: `http://127.0.0.1:${port}`,

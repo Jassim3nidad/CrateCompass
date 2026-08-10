@@ -32,7 +32,7 @@ export function ProviderAttribution({
               href={source.url}
               target="_blank"
               rel="noreferrer noopener"
-              className="rounded underline underline-offset-2 hover:text-[var(--foreground)] focus-visible:ring-2 focus-visible:ring-[var(--focus)] focus-visible:outline-none"
+              className="focus-ring rounded underline underline-offset-2 hover:text-[var(--foreground)]"
             >
               {source.label}
             </a>

@@ -12,7 +12,11 @@ test.describe.configure({ mode: "serial" });
 
 async function signOut(page: Page, projectName: string) {
   if (projectName.includes("mobile")) {
-    await page.locator("header details summary").click();
+    // By role and name rather than by tag. This was `header details summary`
+    // and broke the moment the menu stopped being a `<details>` in Phase 10 —
+    // a test asserting the markup it happened to find rather than the control
+    // a listener uses.
+    await page.getByRole("button", { name: "Open navigation menu" }).click();
   }
 
   await page.getByRole("button", { name: "Sign out" }).click();

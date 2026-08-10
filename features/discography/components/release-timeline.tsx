@@ -142,7 +142,7 @@ export function ReleaseTimeline({
                     href={entry.sourceUrl}
                     target="_blank"
                     rel="noreferrer noopener"
-                    className="inline-flex items-center gap-1 rounded underline underline-offset-2 hover:text-[var(--foreground)] focus-visible:ring-2 focus-visible:ring-[var(--focus)] focus-visible:outline-none"
+                    className="focus-ring inline-flex items-center gap-1 rounded underline underline-offset-2 hover:text-[var(--foreground)]"
                   >
                     <ExternalLink aria-hidden="true" className="size-3.5" />
                     MusicBrainz

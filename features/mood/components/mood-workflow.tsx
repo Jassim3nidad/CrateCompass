@@ -391,7 +391,7 @@ export function MoodWorkflow({
                       type="button"
                       onClick={() => chooseSeed(seed)}
                       disabled={pending}
-                      className="flex w-full items-center justify-between gap-4 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] p-4 text-left transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--surface-raised)] focus-visible:ring-2 focus-visible:ring-[var(--focus)] focus-visible:outline-none disabled:opacity-50"
+                      className="focus-ring flex w-full items-center justify-between gap-4 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] p-4 text-left transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--surface-raised)] disabled:opacity-50"
                     >
                       <span className="min-w-0">
                         <span className="block font-semibold text-[var(--foreground)]">
@@ -534,7 +534,7 @@ function CreationOutcome({
           href={result.playlistUrl}
           target="_blank"
           rel="noreferrer noopener"
-          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--border-strong)] bg-[var(--surface)] px-4 text-sm font-semibold text-[var(--foreground)] hover:bg-[var(--surface-raised)] focus-visible:ring-2 focus-visible:ring-[var(--focus)] focus-visible:outline-none"
+          className="focus-ring inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--border-strong)] bg-[var(--surface)] px-4 text-sm font-semibold text-[var(--foreground)] hover:bg-[var(--surface-raised)]"
         >
           <ExternalLink aria-hidden="true" className="size-4" />
           Open in Spotify
@@ -567,7 +567,7 @@ function CreationOutcome({
           href={result.playlistUrl}
           target="_blank"
           rel="noreferrer noopener"
-          className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--border-strong)] bg-[var(--surface)] px-4 text-sm font-semibold text-[var(--foreground)] hover:bg-[var(--surface-raised)] focus-visible:ring-2 focus-visible:ring-[var(--focus)] focus-visible:outline-none"
+          className="focus-ring mt-4 inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--border-strong)] bg-[var(--surface)] px-4 text-sm font-semibold text-[var(--foreground)] hover:bg-[var(--surface-raised)]"
         >
           <ExternalLink aria-hidden="true" className="size-4" />
           Open in Spotify

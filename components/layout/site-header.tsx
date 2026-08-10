@@ -1,10 +1,11 @@
-import { Compass, Menu, X } from "lucide-react";
+import { Compass } from "lucide-react";
 import Link from "next/link";
 
+import { MobileNav } from "@/components/layout/mobile-nav";
 import { NavLink } from "@/components/layout/nav-link";
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/features/auth/actions";
-import { primaryNavigation, secondaryNavigation } from "@/lib/navigation";
+import { primaryNavigation } from "@/lib/navigation";
 import { createClient } from "@/lib/supabase/server";
 
 export async function SiteHeader() {
@@ -16,7 +17,7 @@ export async function SiteHeader() {
       <div className="mx-auto flex h-17 max-w-[90rem] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         <Link
           href="/"
-          className="group inline-flex min-h-11 items-center gap-3 rounded-full pr-3 focus-visible:ring-2 focus-visible:ring-[var(--focus)] focus-visible:outline-none"
+          className="focus-ring group inline-flex min-h-11 items-center gap-3 rounded-full pr-3"
           aria-label="CrateCompass home"
         >
           <span className="grid size-9 place-items-center rounded-full border border-[var(--border-strong)] bg-[var(--surface-raised)] text-[var(--amber-soft)] transition-colors group-hover:border-[var(--amber)] motion-reduce:transition-none">
@@ -35,7 +36,7 @@ export async function SiteHeader() {
             <NavLink
               key={item.href}
               href={item.href}
-              className="min-h-10 rounded-full px-4 py-2 text-sm font-medium text-[var(--muted)] transition-colors hover:bg-[var(--surface)] hover:text-[var(--foreground)] focus-visible:ring-2 focus-visible:ring-[var(--focus)] focus-visible:outline-none aria-[current=page]:bg-[var(--surface-raised)] aria-[current=page]:text-[var(--foreground)] motion-reduce:transition-none"
+              className="focus-ring min-h-10 rounded-full px-4 py-2 text-sm font-medium text-[var(--muted)] transition-colors duration-[var(--duration-fast)] hover:bg-[var(--surface)] hover:text-[var(--foreground)] aria-[current=page]:bg-[var(--surface-raised)] aria-[current=page]:text-[var(--foreground)] motion-reduce:transition-none"
             >
               {item.label}
             </NavLink>
@@ -61,50 +62,19 @@ export async function SiteHeader() {
           )}
         </div>
 
-        <details className="group relative lg:hidden">
-          <summary className="grid size-11 cursor-pointer list-none place-items-center rounded-full border border-[var(--border-strong)] bg-[var(--surface)] text-[var(--foreground)] hover:bg-[var(--surface-raised)] focus-visible:ring-2 focus-visible:ring-[var(--focus)] focus-visible:outline-none [&::-webkit-details-marker]:hidden">
-            <Menu aria-hidden="true" className="size-5 group-open:hidden" />
-            <X aria-hidden="true" className="hidden size-5 group-open:block" />
-            <span className="sr-only">Toggle navigation menu</span>
-          </summary>
-          <div className="absolute right-0 mt-3 w-[min(21rem,calc(100vw-2rem))] rounded-3xl border border-[var(--border-strong)] bg-[var(--surface-raised)] p-3 shadow-2xl">
-            <nav aria-label="Mobile navigation" className="grid gap-1">
-              {[...primaryNavigation, ...secondaryNavigation].map((item) => {
-                const Icon = item.icon;
-                return (
-                  <NavLink
-                    key={item.href}
-                    href={item.href}
-                    className="flex min-h-14 items-center gap-3 rounded-2xl px-3 text-sm text-[var(--muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)] focus-visible:ring-2 focus-visible:ring-[var(--focus)] focus-visible:outline-none aria-[current=page]:bg-[var(--surface)] aria-[current=page]:text-[var(--foreground)]"
-                  >
-                    <Icon aria-hidden="true" className="size-4 shrink-0" />
-                    <span>
-                      <span className="block font-semibold">{item.label}</span>
-                      <span className="block text-xs text-[var(--muted-dim)]">
-                        {item.description}
-                      </span>
-                    </span>
-                  </NavLink>
-                );
-              })}
-              {isAuthenticated ? (
-                <form action={signOut}>
-                  <Button
-                    type="submit"
-                    variant="secondary"
-                    className="mt-2 w-full"
-                  >
-                    Sign out
-                  </Button>
-                </form>
-              ) : (
-                <Button asChild variant="accent" className="mt-2 w-full">
-                  <Link href="/auth/sign-in">Sign in</Link>
-                </Button>
-              )}
-            </nav>
-          </div>
-        </details>
+        <MobileNav>
+          {isAuthenticated ? (
+            <form action={signOut}>
+              <Button type="submit" variant="secondary" className="mt-2 w-full">
+                Sign out
+              </Button>
+            </form>
+          ) : (
+            <Button asChild variant="accent" className="mt-2 w-full">
+              <Link href="/auth/sign-in">Sign in</Link>
+            </Button>
+          )}
+        </MobileNav>
       </div>
     </header>
   );

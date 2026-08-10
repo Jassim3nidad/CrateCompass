@@ -37,6 +37,7 @@ export function DiscoveryCard({
   const [saved, setSaved] = useState(candidate.saved);
   const [notice, setNotice] = useState<string | null>(null);
   const [authRequired, setAuthRequired] = useState(false);
+  const [justSaved, setJustSaved] = useState(false);
   const [pending, startTransition] = useTransition();
 
   function toggleSave() {
@@ -54,8 +55,14 @@ export function DiscoveryCard({
 
       if (result.status === "saved" || result.status === "already-saved") {
         setSaved(true);
+        // Confirmation is the button changing colour, icon and label; the pop
+        // is only there to draw the eye to a change that happens well below
+        // where the pointer usually is. It is one shot, and the state it
+        // celebrates is already legible without it.
+        setJustSaved(true);
       } else if (result.status === "removed") {
         setSaved(false);
+        setJustSaved(false);
       }
     });
   }
@@ -73,7 +80,7 @@ export function DiscoveryCard({
           <h3 className="mt-1 text-xl font-semibold tracking-[-0.025em] text-[var(--foreground)]">
             <Link
               href={`/artists/${candidate.mbid}`}
-              className="rounded hover:underline focus-visible:ring-2 focus-visible:ring-[var(--focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--background)] focus-visible:outline-none"
+              className="focus-ring rounded hover:underline"
             >
               {candidate.name}
             </Link>
@@ -98,6 +105,12 @@ export function DiscoveryCard({
           onClick={toggleSave}
           disabled={pending}
           aria-pressed={saved}
+          // Fires once, then the class is dropped so a later re-render cannot
+          // replay it. Under reduced motion the class resolves to nothing and
+          // this event never arrives, which is harmless: the flag then only
+          // gates a rule that does not exist.
+          onAnimationEnd={() => setJustSaved(false)}
+          className={justSaved ? "motion-confirm" : undefined}
         >
           {saved ? (
             <BookmarkCheck aria-hidden="true" className="size-4" />
@@ -132,7 +145,7 @@ export function DiscoveryCard({
               {" "}
               <Link
                 href="/auth/sign-in?returnTo=/discover"
-                className="rounded underline underline-offset-2 hover:text-[var(--foreground)] focus-visible:ring-2 focus-visible:ring-[var(--focus)] focus-visible:outline-none"
+                className="focus-ring rounded underline underline-offset-2 hover:text-[var(--foreground)]"
               >
                 Sign in
               </Link>
