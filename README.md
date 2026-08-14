@@ -1,53 +1,136 @@
 # CrateCompass
 
-CrateCompass is an AI-assisted music-discovery application focused on sourced artist relationships, mood interpretation, canonical discographies, and personal discovery management. Spotify is an optional export destination and its content is never sent to AI.
+**Discovery with a paper trail.** Trace how one artist connects to another,
+translate a mood into a listening direction, read a discography, and keep the
+finds worth returning to — with every claim attributed to the provider that
+made it.
 
-## Phase 1 foundation
+**Live:** https://cratecompass.vercel.app
 
-This repository currently contains the responsive Next.js App Router shell, strict TypeScript configuration, Tailwind/shadcn-compatible design tokens, accessible route shells, environment validation, redacted structured logging, and the automated quality toolchain. Authentication, databases, and provider integrations are intentionally not implemented yet.
+---
 
-## Local setup
+## What it is
 
-Requirements: Node.js 24 and npm 11 (the currently verified workspace versions).
+CrateCompass is a music discovery application built around one idea: a
+recommendation you cannot interrogate is not much of a recommendation. Every
+relationship it shows names the provider that reported it, every factual answer
+cites the records it came from, and when the data does not support an answer it
+says so instead of inventing one.
+
+It is deliberately not a streaming client. Spotify is an optional destination —
+a place to open an artist or receive a playlist you approved — never the source
+of what gets recommended.
+
+### What it does
+
+| Feature             | How                                                                                               |
+| ------------------- | ------------------------------------------------------------------------------------------------- |
+| Similar artists     | ListenBrainz similarity, reconciled to canonical MusicBrainz identities                           |
+| Why this match      | Evidence assembled from providers, then explained by a model that must cite the evidence it used  |
+| Mood → playlist     | Natural language parsed into reviewable criteria; you confirm the seeds before anything is built  |
+| Discography         | Full release-group timeline from MusicBrainz, with type and date precision                        |
+| Discography Q&A     | Grounded answers with citations, and an honest refusal when the records do not say                |
+| Library and history | Saved discoveries keep the explanation that convinced you; history records what actually happened |
+| Data rights         | Disconnect Spotify, export your data, delete your account and everything attached to it           |
+
+---
+
+## The constraint that shapes everything
+
+**No Spotify content ever reaches an AI provider.** Not artist metadata, not
+track data, not images, not audio features, not listening history.
+
+This is enforced in four independent ways, any one of which would catch a
+mistake:
+
+1. **Types.** Spotify values are branded (`SpotifyResourceId`, `SpotifyUri`) and
+   are not assignable to AI input types.
+2. **A runtime gateway.** Every AI call goes through `buildAiInput`: strict
+   schema parse rejecting unknown keys, a provenance allowlist that never
+   contains Spotify, a recursive scan for Spotify hosts, URIs and credentials,
+   and size caps.
+3. **The module graph.** ESLint rules keep the trees disjoint in both
+   directions — AI modules cannot import Spotify adapters, and Spotify or
+   playlist modules cannot import AI.
+4. **A repository scan.** A compliance test reads the source tree and asserts
+   all of the above on every run.
+
+See [`docs/architecture/provider-boundaries.md`](docs/architecture/provider-boundaries.md).
+
+---
+
+## Stack
+
+Next.js App Router · React 19 · TypeScript (strict, `exactOptionalPropertyTypes`)
+· Tailwind CSS v4 · Supabase (Postgres, Auth, RLS) · Vercel
+
+Providers: MusicBrainz (identity, discography) · ListenBrainz (similarity, tags)
+· Spotify (links and playlist creation only) · a configurable AI provider
+(OpenAI, Anthropic, Gemini, or OpenRouter).
+
+---
+
+## Getting started
 
 ```bash
 npm install
-cp .env.example .env.local
+cp .env.example .env.local   # then fill it in
 npm run dev
 ```
 
-On Windows PowerShell, use `Copy-Item .env.example .env.local` instead of `cp`.
+Full walkthrough, including the local database:
+[`docs/setup/local-development.md`](docs/setup/local-development.md).
+Every variable is described in
+[`docs/setup/environment-variables.md`](docs/setup/environment-variables.md).
 
-Open <http://127.0.0.1:3000>. Local URLs intentionally use an explicit loopback IP rather than `localhost` to match the planned Spotify redirect policy.
-
-## Quality commands
+## Verification
 
 ```bash
-npm run format:check
-npm run lint
-npm run typecheck
-npm test
-npm run test:e2e
-npm run test:a11y
+npm run check          # format, lint, typecheck, unit tests
 npm run build
+npx playwright test --grep-invert @a11y
+npx playwright test --grep @a11y
+npm run db:reset && npm run db:test && npm run db:lint
 ```
 
-Install the Playwright browser once with `npx playwright install chromium` before the browser suites.
+Current state: 610 unit/integration/contract/compliance tests, 201 end-to-end,
+54 accessibility, 140 pgTAP assertions. Lighthouse on production scores 100 for
+accessibility, best practices and SEO.
 
-## Environment behavior
+---
 
-`.env.example` is the complete contract. Provider secrets are optional until their approved phases, while application identity, URLs, logging, provider selections, and version metadata are validated through Zod. `validateServerEnvironment()` throws one clear aggregated error when required values are absent or invalid.
+## Documentation
 
-Never commit `.env.local` or real credentials. Only variables prefixed with `NEXT_PUBLIC_` may be considered for browser exposure, and that prefix does not make a value safe automatically.
+| Area                   | Document                                                                             |
+| ---------------------- | ------------------------------------------------------------------------------------ |
+| Local setup            | [`docs/setup/local-development.md`](docs/setup/local-development.md)                 |
+| Environment            | [`docs/setup/environment-variables.md`](docs/setup/environment-variables.md)         |
+| Deploying the app      | [`docs/deployment/vercel-deployment.md`](docs/deployment/vercel-deployment.md)       |
+| Deploying the database | [`docs/deployment/supabase-deployment.md`](docs/deployment/supabase-deployment.md)   |
+| Spotify integration    | [`docs/integrations/spotify.md`](docs/integrations/spotify.md)                       |
+| MusicBrainz            | [`docs/integrations/musicbrainz.md`](docs/integrations/musicbrainz.md)               |
+| Discovery provider     | [`docs/integrations/discovery-provider.md`](docs/integrations/discovery-provider.md) |
+| AI providers           | [`docs/integrations/ai-providers.md`](docs/integrations/ai-providers.md)             |
+| Architecture           | [`docs/architecture/`](docs/architecture/) (+ 5 ADRs)                                |
+| Security audit         | [`docs/audits/security-audit.md`](docs/audits/security-audit.md)                     |
+| Design system          | [`docs/product/phase-10-design-system.md`](docs/product/phase-10-design-system.md)   |
+| User guide             | [`docs/product/user-guide.md`](docs/product/user-guide.md)                           |
+| Case study             | [`docs/project/portfolio-case-study.md`](docs/project/portfolio-case-study.md)       |
 
-## Architecture and compliance
+## Status
 
-Planning documents live under `docs/`. Begin with:
+Deployed and working, with three caveats worth stating plainly:
 
-- `docs/product/product-requirements.md`
-- `docs/architecture/system-architecture.md`
-- `docs/architecture/provider-boundaries.md`
-- `docs/security/threat-model.md`
-- `docs/compliance/spotify-compliance.md`
+- **Spotify flows are unverified in production.** The production redirect URI is
+  not yet registered in the Spotify dashboard, so connecting an account and
+  creating a playlist cannot be exercised on the live site.
+- **No continuous integration.** Every gate above is run by hand.
+- **Open findings** from the Phase 11 audit are listed in
+  [`docs/audits/release-readiness.md`](docs/audits/release-readiness.md).
 
-Phase 2 must be approved separately before Supabase authentication or database work begins.
+## Licence and attribution
+
+Music metadata from [MusicBrainz](https://musicbrainz.org) and
+[ListenBrainz](https://listenbrainz.org), used under their terms and credited in
+the interface beside the data they supply. Spotify is a registered trademark of
+Spotify AB; this project is not affiliated with or endorsed by Spotify.
