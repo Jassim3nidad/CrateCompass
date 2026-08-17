@@ -28,7 +28,9 @@ export function ProviderStatus({
   const label = status.replace("-", " ");
 
   return (
-    <div className="flex items-start justify-between gap-4 rounded-2xl border border-[var(--border)] bg-[var(--surface-subtle)] p-4">
+    // Nested inside a raised Card (settings page) — sunken, never a second
+    // raised surface stacked on the first.
+    <div className="surface-sunken elev-inset flex items-start justify-between gap-4 rounded-[var(--r-md)] p-4">
       <div className="flex min-w-0 gap-3">
         <Icon
           aria-hidden="true"
