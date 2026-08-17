@@ -77,7 +77,9 @@ export function ExplanationPanel({
         onClick={toggle}
         aria-expanded={expanded}
         aria-controls={panelId}
-        className="focus-ring inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--border-strong)] bg-[var(--surface)] px-4 text-sm font-semibold text-[var(--foreground)] transition-colors duration-[var(--duration-fast)] hover:bg-[var(--surface-raised)] motion-reduce:transition-none"
+        // Nested inside DiscoveryCard (raised) — sunken, not a second raised
+        // surface.
+        className="focus-ring surface-sunken elev-inset hover:surface-raised inline-flex min-h-11 items-center gap-2 rounded-[var(--r-pill)] px-4 text-sm font-semibold text-[var(--foreground)] transition-[background-color] duration-[var(--duration-fast)] motion-reduce:transition-none"
       >
         <Sparkles
           aria-hidden="true"
@@ -99,7 +101,7 @@ export function ExplanationPanel({
         // `hidden` is `display: none`, which takes the element out of the box
         // tree entirely — so the entrance restarts every time it is reopened
         // rather than playing once and never again.
-        className="motion-expand mt-4 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-subtle)] p-4"
+        className="motion-expand surface-sunken elev-inset mt-4 rounded-[var(--r-md)] p-4"
       >
         {pending ? (
           <div>
@@ -142,7 +144,7 @@ export function ExplanationPanel({
                     key={index}
                     className="flex gap-3 text-sm leading-6 text-[var(--muted)]"
                   >
-                    <span className="mt-0.5 h-fit shrink-0 rounded-full border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5 text-[0.65rem] font-semibold tracking-wide text-[var(--muted-dim)] uppercase">
+                    <span className="mt-0.5 h-fit shrink-0 rounded-full bg-[var(--surface)] px-2 py-0.5 text-[0.65rem] font-semibold tracking-wide text-[var(--muted-dim)] uppercase">
                       {fact.source}
                     </span>
                     <span>{fact.statement}</span>
@@ -174,7 +176,7 @@ export function ExplanationPanel({
                     (characteristic) => (
                       <li
                         key={characteristic}
-                        className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-xs text-[var(--muted)]"
+                        className="rounded-full bg-[var(--surface)] px-3 py-1 text-xs text-[var(--muted)]"
                       >
                         {characteristic}
                       </li>
@@ -225,7 +227,7 @@ export function ExplanationPanel({
               </p>
             </section>
 
-            <div className="border-t border-[var(--border)] pt-4">
+            <div className="pt-4">
               <Label htmlFor={preferenceId}>
                 What do you like about {seedName}?
               </Label>
