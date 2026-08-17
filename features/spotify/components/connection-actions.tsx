@@ -58,7 +58,14 @@ export function ConnectSpotifyForm({
   );
 }
 
-export function DisconnectSpotifyForm() {
+export function DisconnectSpotifyForm({
+  // One raised control per card region: when a reconnect prompt is also
+  // showing, that's the primary action and this becomes the secondary one,
+  // so it goes flat rather than competing as a second raised CTA.
+  secondary = false,
+}: {
+  readonly secondary?: boolean;
+}) {
   const [state, formAction] = useActionState(
     disconnectSpotify,
     initialSpotifyActionState,
@@ -66,7 +73,10 @@ export function DisconnectSpotifyForm() {
 
   return (
     <form action={formAction} className="space-y-3">
-      <PendingButton pendingLabel="Disconnecting…" variant="destructive">
+      <PendingButton
+        pendingLabel="Disconnecting…"
+        variant={secondary ? "ghost" : "destructive"}
+      >
         Disconnect Spotify
       </PendingButton>
       {state.message ? (
