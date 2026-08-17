@@ -6,16 +6,23 @@ import { cn } from "@/lib/utils";
 const cardVariants = cva("rounded-[var(--r-lg)] p-5 sm:p-6", {
   variants: {
     variant: {
-      // `raised` had extra emphasis (a heavier shadow) over `default` in the
-      // legacy system; --elev-raised is the ceiling here (the brief reserves
-      // the one colour shadow for the accent button), so both variants now
-      // render identically. Names kept for API compatibility.
-      default: "surface-raised elev-raised",
+      // `default` and `raised` used to render identically (both the
+      // --elev-raised ceiling), which meant every card on a page claimed
+      // the same "popped out" prominence regardless of whether it was the
+      // one thing on the page or the fourteenth item in a list. `raised` is
+      // now the deliberate ceiling, reserved for a page's genuinely primary
+      // surface (a lone form card, a hero illustration); `default` is the
+      // routine tier for repeated or secondary content (list rows, saved
+      // items, informational asides) — same rounding and fill, one shadow
+      // step down.
+      default: "surface-raised elev-flat",
       raised: "surface-raised elev-raised",
-      // Emphasis comes from a warmer fill, not a second kind of shadow —
-      // still --elev-raised underneath.
+      // Emphasis comes from a warmer fill, not a second kind of shadow — so
+      // this stays at the same --elev-flat tier as `default` rather than
+      // also claiming --elev-raised, which would stack two emphasis signals
+      // on one element.
       accent:
-        "bg-[image:linear-gradient(145deg,color-mix(in_srgb,var(--accent)_15%,var(--neu-raised)),var(--neu-raised))] elev-raised",
+        "bg-[image:linear-gradient(145deg,color-mix(in_srgb,var(--accent)_15%,var(--neu-raised)),var(--neu-raised))] elev-flat",
       // Sunken, not just unshadowed: this is also the variant to reach for
       // when a card sits inside another raised card. Stacking --elev-raised
       // on --elev-raised reads as two competing "pop out" claims on the same

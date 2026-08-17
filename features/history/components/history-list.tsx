@@ -9,7 +9,6 @@ import {
 import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import {
   deleteAllHistoryAction,
   deleteHistoryEntryAction,
@@ -127,60 +126,63 @@ export function HistoryList({
         </div>
       ) : null}
 
-      <ul className="space-y-3">
+      {/* A hairline-divided list, not a stack of cards: an audit trail reads
+          as an index (typographic rhythm, rules between entries), and a
+          shadow per row stopped meaning anything once every row had one —
+          this is the "flat rows" case, not the "routine card" one --elev-flat
+          already covers elsewhere (see card.tsx). */}
+      <ul className="divide-y divide-[var(--border)]">
         {entries.map((entry) => (
-          <li key={entry.id}>
-            <Card>
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <p className="flex items-center gap-2 text-xs font-semibold tracking-[0.15em] text-[var(--muted-dim)] uppercase">
-                    <KindIcon kind={entry.kind} />
-                    {KIND_LABEL[entry.kind]}
-                    {entry.status === "failed" ? " · did not complete" : ""}
+          <li key={entry.id} className="py-4 first:pt-0 last:pb-0">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="flex items-center gap-2 text-xs font-semibold tracking-[0.15em] text-[var(--muted-dim)] uppercase">
+                  <KindIcon kind={entry.kind} />
+                  {KIND_LABEL[entry.kind]}
+                  {entry.status === "failed" ? " · did not complete" : ""}
+                </p>
+
+                <h2 className="mt-2 text-lg font-semibold text-[var(--foreground)]">
+                  {entry.inputValue}
+                </h2>
+
+                <p className="mt-1 text-sm text-[var(--muted)]">
+                  {new Date(entry.createdAt).toLocaleDateString(undefined, {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
+                  {entry.kind === "discography" && entry.questionCount > 0
+                    ? ` · ${entry.questionCount} question${entry.questionCount === 1 ? "" : "s"}`
+                    : ""}
+                  {entry.kind === "artist" && entry.resultCount > 0
+                    ? ` · ${entry.resultCount} candidate${entry.resultCount === 1 ? "" : "s"}`
+                    : ""}
+                  {entry.providers.length > 0
+                    ? ` · via ${entry.providers.join(", ")}`
+                    : ""}
+                </p>
+
+                {entry.playlistUrl ? (
+                  <p className="mt-2 text-xs text-[var(--muted-dim)]">
+                    A playlist was created in Spotify. Deleting this entry does
+                    not remove it from your Spotify account.
                   </p>
-
-                  <h2 className="mt-2 text-lg font-semibold text-[var(--foreground)]">
-                    {entry.inputValue}
-                  </h2>
-
-                  <p className="mt-1 text-sm text-[var(--muted)]">
-                    {new Date(entry.createdAt).toLocaleDateString(undefined, {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })}
-                    {entry.kind === "discography" && entry.questionCount > 0
-                      ? ` · ${entry.questionCount} question${entry.questionCount === 1 ? "" : "s"}`
-                      : ""}
-                    {entry.kind === "artist" && entry.resultCount > 0
-                      ? ` · ${entry.resultCount} candidate${entry.resultCount === 1 ? "" : "s"}`
-                      : ""}
-                    {entry.providers.length > 0
-                      ? ` · via ${entry.providers.join(", ")}`
-                      : ""}
-                  </p>
-
-                  {entry.playlistUrl ? (
-                    <p className="mt-2 text-xs text-[var(--muted-dim)]">
-                      A playlist was created in Spotify. Deleting this entry
-                      does not remove it from your Spotify account.
-                    </p>
-                  ) : null}
-                </div>
-
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => removeEntry(entry.id)}
-                  disabled={pending}
-                >
-                  <Trash2 aria-hidden="true" className="size-4" />
-                  Delete
-                  <span className="sr-only"> {entry.inputValue}</span>
-                </Button>
+                ) : null}
               </div>
-            </Card>
+
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => removeEntry(entry.id)}
+                disabled={pending}
+              >
+                <Trash2 aria-hidden="true" className="size-4" />
+                Delete
+                <span className="sr-only"> {entry.inputValue}</span>
+              </Button>
+            </div>
           </li>
         ))}
       </ul>
