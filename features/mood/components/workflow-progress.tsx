@@ -75,7 +75,7 @@ export function WorkflowProgress({ stage }: { readonly stage: WorkflowStage }) {
       // Announced as a whole when the active stage changes, so a screen-reader
       // user is told which step is running rather than only that something is.
       aria-live="polite"
-      className="space-y-3 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-subtle)] p-4"
+      className="surface-raised elev-raised space-y-3 rounded-[var(--r-md)] p-4"
     >
       {STAGES.map((entry, index) => {
         const isDone = completed.has(entry.id);
