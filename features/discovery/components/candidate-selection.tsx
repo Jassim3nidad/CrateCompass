@@ -46,10 +46,10 @@ export function CandidateSelection({
               <Link
                 href={`/discover?q=${encodeURIComponent(query)}&artist=${candidate.mbid}`}
                 aria-current={isSelected ? "true" : undefined}
-                className={`group focus-ring flex items-center justify-between gap-4 rounded-[var(--radius-md)] border p-4 transition-colors ${
+                className={`group focus-ring elev-flat hover:elev-raised flex items-center justify-between gap-4 rounded-[var(--r-md)] p-4 transition-[background-color,box-shadow] ${
                   isSelected
-                    ? "border-[color-mix(in_srgb,var(--violet)_55%,var(--border))] bg-[color-mix(in_srgb,var(--violet)_14%,var(--surface))]"
-                    : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--border-strong)] hover:bg-[var(--surface-raised)]"
+                    ? "bg-[color-mix(in_srgb,var(--accent)_14%,var(--neu-raised))]"
+                    : "surface-raised"
                 }`}
               >
                 <span className="min-w-0">
