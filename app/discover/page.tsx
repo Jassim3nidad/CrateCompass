@@ -185,11 +185,11 @@ async function DiscoveryPanel({ mbid }: { readonly mbid: string }) {
           <div className="mb-4 flex items-center gap-3">
             <Compass
               aria-hidden="true"
-              className="size-5 text-[var(--violet)]"
+              className="size-5 text-[var(--accent-foreground)]"
             />
             <h2
               id="results-heading"
-              className="text-lg font-semibold tracking-[-0.02em] text-[var(--foreground)]"
+              className="text-lg font-semibold tracking-[-0.02em] text-[var(--text-primary)]"
             >
               Related to {seed.value.artist.name}
             </h2>
