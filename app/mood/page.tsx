@@ -63,12 +63,15 @@ export default async function MoodPage({ searchParams }: MoodPageProps) {
         <EmptyState
           title="Sign in to build a playlist"
           description="Mood interpretation is metered per account, and the draft it produces is saved to your account — if creating the playlist needs a Spotify reconnect, you are brought straight back to it. Artist discovery works without an account."
+          // Two raised buttons side by side inside EmptyState's own sunken
+          // Card also breaks one-raised-control-per-region: Sign in is the
+          // primary action here and keeps it, Go to discovery goes flat.
           action={
             <div className="flex flex-wrap justify-center gap-3">
               <Button asChild variant="accent">
                 <Link href="/auth/sign-in?returnTo=/mood">Sign in</Link>
               </Button>
-              <Button asChild variant="secondary">
+              <Button asChild variant="ghost">
                 <Link href="/discover">Go to discovery</Link>
               </Button>
             </div>
