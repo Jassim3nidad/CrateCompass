@@ -23,6 +23,14 @@
   --amber: #d89b45;
   --amber-soft: #edbc75;
   --electric: #57a6dd;
+  /* --electric has no --electric-soft-style sibling because, unlike
+     violet/amber/success/danger, it was never split — it's used both as a
+     fill (strength-badge's "moderate" tint) and as foreground (icons)
+     under the one name. That's fine while both readings share one value,
+     but light theme needs a darker foreground without muddying the fill,
+     so this is the split, added now rather than retrofitted. Dark keeps
+     them identical since --electric already passes as foreground here. */
+  --electric-soft: var(--electric);
   --success: #55a77b;
   --success-soft: #8fd6ae;
   --danger: #c45c67;
@@ -46,10 +54,272 @@
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
   --stagger-step: 55ms;
 
-  /* Elevation, as a scale rather than per-component shadow literals. */
+  /* Elevation, as a scale rather than per-component shadow literals. Kept for
+     floating overlays (toasts, dropdown menus) that sit *above* the material
+     rather than being extruded from it — the neumorphic pair below covers
+     embedded surfaces (cards, buttons, inputs). */
   --elevation-1: 0 1px 2px rgb(0 0 0 / 0.3);
   --elevation-2: 0 12px 32px rgb(0 0 0 / 0.22);
   --elevation-3: 0 24px 80px rgb(0 0 0 / 0.28);
+
+  /**
+   * Neumorphic token layer (Phase 1 of the soft-UI migration).
+   *
+   * Dark is the values on bare :root, not a fallback: the app has no light
+   * mode today and a documented accessibility history in dark (see
+   * docs/product/phase-10-design-system.md), so dark stays the default
+   * identity and light is the opt-in variant below.
+   *
+   * `--neu-*` (not `--surface-*`) because the legacy `--surface-base`/
+   * `--surface-raised`/`--surface-sunken`-shaped tokens stay permanently —
+   * they were made theme-aware on purpose (see the legacy block below)
+   * rather than migrated away, so the old plan to eventually rename this
+   * family into their names never made sense once that decision landed.
+   * `--neu-*` reads correctly next to `--elev-*`, the recipes it's always
+   * paired with, and can't collide with anything legacy ever will.
+   *
+   * The accent reuses the app's existing violet rather than the reference
+   * palette's blue — kept out of the fill/foreground trap the violet family
+   * already solved once: `--accent` is a fill colour only (3.1:1 on
+   * --neu-base, fails as text), `--accent-foreground` is the readable
+   * member for icons and text.
+   */
+  /* Neutral gray, not a tint of the accent violet — depth reads through
+     --depth-highlight and shadow direction, not through a warm/cool base.
+     Close to the original --background (#0b0b0f) rather than a midtone:
+     raised is ~3%L lighter, sunken ~2%L darker, base itself ~8%L (vs. the
+     first pass's ~15%L, which read as a lifted, purple-tinted gray). */
+  --neu-base: #141414;
+  --neu-raised: #1c1c1c;
+  --neu-sunken: #0e0e0e;
+
+  --shadow-light: rgb(255 255 255 / 0.06);
+  --shadow-dark: rgb(0 0 0 / 0.55);
+
+  /* Dark-only exception to "no borders": at dark-theme intensities, the
+     diffuse light/dark shadow pair alone doesn't read as "popped out" next to
+     an --elev-inset well of similar overall lightness (confirmed by
+     rendering all three recipes side by side — see app/dev-depth-check).
+     A crisp 1px highlight along the top edge sells the raised cue the way
+     the light theme's much stronger shadow-light (0.95 alpha) already does
+     without one. Neutralised to transparent in the light override below. */
+  --depth-highlight: inset 0 1px 0 rgb(255 255 255 / 0.06);
+
+  --accent: var(--violet);
+  --accent-deep: var(--violet-strong);
+  --accent-foreground: var(--violet-soft);
+  /* Stops are --accent -> --accent-deep, not a synthetically lighter start:
+     a #8a72f0 light stop measured 3.65:1 for the white button label riding on
+     top of it, under the 4.5:1 floor. --accent itself is the lightest point
+     that still clears it (4.93:1), so the gradient stays inside the family
+     already vetted as a fill colour. */
+  --accent-gradient: linear-gradient(
+    135deg,
+    var(--accent) 0%,
+    var(--accent-deep) 100%
+  );
+  --accent-glow: rgb(115 87 232 / 0.35);
+
+  --text-primary: var(--foreground);
+  --text-secondary: #b7b2bd;
+  /* Not var(--muted-dim): that alias (#928e99) drops to 4.35:1 on
+     --neu-raised, the lightest of the three dark surfaces and so the
+     hardest case. Lightened independently so the legacy token, still read
+     elsewhere against darker legacy surfaces, is untouched. */
+  --text-muted: #9b96a1;
+  --text-on-accent: #ffffff;
+
+  --r-sm: 0.75rem;
+  --r-md: 1.25rem;
+  --r-lg: 1.75rem;
+  --r-pill: 999px;
+
+  --elev-raised:
+    -6px -6px 12px var(--shadow-light), 6px 6px 12px var(--shadow-dark),
+    var(--depth-highlight);
+  --elev-flat:
+    -3px -3px 6px var(--shadow-light), 3px 3px 6px var(--shadow-dark),
+    var(--depth-highlight);
+  --elev-inset:
+    inset 3px 3px 6px var(--shadow-dark),
+    inset -3px -3px 6px var(--shadow-light);
+  --elev-accent: 0 6px 16px var(--accent-glow);
+}
+
+/**
+ * Light theme override. Wired to the toggle in
+ * components/ui/theme-toggle.tsx, which sets `data-theme="light"` on
+ * <html>; app/layout.tsx's beforeInteractive script applies a stored
+ * preference before hydration so the page never flashes.
+ *
+ * Text tokens are darkened past the reference palette's literal values:
+ * the reference's `--text-secondary` (#6b7684) measures 3.85:1 on
+ * `--neu-base` and its `--text-muted` (#9aa5b4) measures 2.08:1, both
+ * under the 4.5:1 floor. `--focus` also needs its own override here — the
+ * dark theme's lavender (#9c87f5) drops to 2.43:1 on the light surface,
+ * since it was tuned against a near-black background that no longer applies.
+ */
+:root[data-theme="light"] {
+  --neu-base: #e6ebf1;
+  --neu-raised: #eef2f7;
+  --neu-sunken: #e0e6ed;
+
+  --shadow-light: rgb(255 255 255 / 0.95);
+  /* 0.55 read as too flat for a card to separate from the page at a glance
+     — bumped for legibility. Still short of a hard edge: this is alpha on
+     an already-desaturated blue-gray, not a border-width. */
+  --shadow-dark: rgb(163 177 198 / 0.75);
+  /* The dark-only top-edge highlight exception does not apply here — light
+     theme's shadow pair already has enough contrast to read as raised on
+     its own. */
+  --depth-highlight: inset 0 1px 0 transparent;
+
+  --text-primary: #2d3440;
+  --text-secondary: #5a6472;
+  --text-muted: #5c6674;
+  --accent-foreground: #5a3fd6;
+
+  --focus: #5433c9;
+
+  /**
+   * The dark-tuned "-soft" tokens (--amber-soft, --success-soft,
+   * --danger-soft, --violet-soft) and --electric-soft are the foreground
+   * half of an existing fill/foreground split (base --amber/--success/
+   * --danger/--violet stay theme-invariant fills, used only via
+   * color-mix() — grepped zero direct usages of the -soft tokens as a
+   * fill anywhere). Overriding them here darkens text and icons without
+   * touching a single tinted background. Measured against every light
+   * surface they render on (worst case noted):
+   *   amber-soft   4.70:1 (surface-sunken)
+   *   success-soft 5.18:1 (surface-sunken)
+   *   danger-soft  4.65:1 (surface-sunken)
+   *   violet-soft  5.36:1 (surface-sunken) — same value as
+   *                --accent-foreground, same family, reused rather than
+   *                inventing a second violet.
+   *   electric-soft 4.55:1 (surface-sunken)
+   */
+  --amber-soft: #8a5a12;
+  --success-soft: #1a6b42;
+  --danger-soft: #b23a4a;
+  --violet-soft: #5a3fd6;
+  --electric-soft: #1a6aa8;
+
+  /**
+   * Legacy tokens, given light values instead of being migrated one
+   * consumer at a time. 201 occurrences across 38 files still read these
+   * directly; without this block every one of them stays dark-only text on
+   * a (now-light) ancestor background the moment anything upstream
+   * converts — an invisible-text bug that would otherwise surface file by
+   * file as Phase 3 proceeds, rather than being fixed once here.
+   *
+   * Values ascend in the same direction as the original dark ladder
+   * (background < surface-subtle < surface < surface-raised, darkest to
+   * lightest) rather than reusing the new --surface-* tokens' exact
+   * numbers — keeping a distinct, if parallel, scale makes it obvious in
+   * a diff which system a given value belongs to until Phase 4 deletes
+   * this block entirely.
+   */
+  --background: #e6ebf1;
+  --surface-subtle: #e9edf2;
+  --surface: #eef2f7;
+  --surface-raised: #f5f7fa;
+  --border: #c7cdd6;
+  --border-strong: #a8b1bd;
+  --foreground: #2d3440;
+  --muted: #5a6472;
+  --muted-dim: #5c6674;
+  /* --elevation-1/2/3 intentionally not overridden: they're black-alpha drop
+     shadows for floating overlays (toasts, dropdown menus) sitting above the
+     page rather than embedded in it, and a black shadow at low alpha reads
+     correctly against a light surface without retuning — the same reason
+     these were left out of the neumorphic --elev-* recipes' scope. */
+
+  /* Dark's value lives on the unrelated `html {}` rule below (predates this
+     migration); this is its light-theme counterpart. Tells the UA to draw
+     native form controls, scrollbars, and the autofill base swatch light
+     instead of dark, so they don't fight the theme underneath them. */
+  color-scheme: light;
+}
+
+/**
+ * Neumorphic surface + elevation utilities.
+ *
+ * Primitives compose these, never `var(--elev-*)` / `var(--shadow-*)` /
+ * `var(--neu-*)` directly. That indirection is what kept the `--neu-*`
+ * rename (surface-raised-neu -> --neu-raised, done once the naming
+ * collision with the legacy tokens was resolved) a four-file change
+ * instead of touching every consumer that paints a raised surface.
+ * `@utility` (Tailwind v4) rather than plain classes so these compose with
+ * `hover:` / `active:` / `motion-reduce:` variants the same as any
+ * built-in utility. The utility class names themselves (`surface-raised`
+ * etc.) didn't change in that rename and don't need to — only the CSS
+ * custom properties backing them did.
+ */
+@utility surface-base {
+  background-color: var(--neu-base);
+}
+@utility surface-raised {
+  background-color: var(--neu-raised);
+}
+@utility surface-sunken {
+  background-color: var(--neu-sunken);
+}
+@utility elev-raised {
+  box-shadow: var(--elev-raised);
+}
+@utility elev-flat {
+  box-shadow: var(--elev-flat);
+}
+@utility elev-inset {
+  box-shadow: var(--elev-inset);
+}
+@utility elev-accent {
+  /* Deliberately does not include --depth-highlight: it's a single colour
+     glow, not a composed raised/flat recipe, and the brief reserves the
+     only coloured shadow in the system for this one case. Layering the
+     dark-theme highlight rim on top of it would put two competing depth
+     cues on the same element — checked side by side and the glow alone
+     reads as "the important button" more clearly without the added rim. */
+  box-shadow: var(--elev-accent);
+}
+
+/**
+ * 36px (--r-pill `sm` buttons) is a legible visual size but fails the 44px
+ * touch-target floor. Scoped to `pointer: coarse` rather than resizing the
+ * chip everywhere: a mouse click doesn't need the padding, and inflating
+ * every filter chip / tag / Save-Dismiss pair globally would bloat dense
+ * rows (library filters, DiscoveryCard's action row) that read fine at
+ * 36px with a mouse.
+ */
+@media (pointer: coarse) {
+  .touch-target-sm {
+    min-height: 44px;
+  }
+}
+
+/**
+ * Chrome/Edge paint autofilled inputs with an opaque UA background that
+ * ignores `background-color` entirely, which would otherwise erase the
+ * --neu-sunken fill and flatten --elev-inset back to a plain box. The
+ * `-webkit-box-shadow` swatch is the standard workaround: an inset shadow
+ * 1000px wide reads as a solid fill to the autofill painter, so it's layered
+ * behind the real --elev-inset shadow rather than replacing it. The 5000s
+ * background-color transition delays the yellow autofill flash Chrome
+ * applies on first paint, past any realistic view of the field.
+ */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--text-primary);
+  -webkit-box-shadow:
+    var(--elev-inset),
+    inset 0 0 0 1000px var(--neu-sunken);
+  box-shadow:
+    var(--elev-inset),
+    inset 0 0 0 1000px var(--neu-sunken);
+  transition: background-color 5000s ease-in-out 0s;
+  caret-color: var(--text-primary);
 }
 
 @theme inline {
@@ -88,8 +358,8 @@ body {
       rgb(216 155 69 / 0.07),
       transparent 24rem
     ),
-    var(--background);
-  color: var(--foreground);
+    var(--neu-base);
+  color: var(--text-primary);
   font-family: var(--font-sans-stack);
   text-rendering: optimizeLegibility;
 }
@@ -148,7 +418,7 @@ summary {
   background:
     radial-gradient(circle at 15% 20%, rgb(216 155 69 / 0.12), transparent 28%),
     radial-gradient(circle at 88% 15%, rgb(115 87 232 / 0.18), transparent 32%),
-    var(--surface);
+    var(--neu-raised);
 }
 
 .sr-only {
@@ -170,8 +440,8 @@ summary {
   z-index: 100;
   transform: translateY(-200%);
   border-radius: 9999px;
-  background: var(--foreground);
-  color: var(--background);
+  background: var(--text-primary);
+  color: var(--neu-base);
   padding: 0.75rem 1rem;
   font-weight: 700;
 }
@@ -311,6 +581,10 @@ summary {
     scroll-behavior: auto;
   }
 
+  /* Covers depth transitions too: a neumorphic hover/active state change is
+     just a `transition-shadow` on box-shadow, and this blanket rule already
+     collapses any transition-duration to near-zero regardless of which
+     property list a component declares. No shadow-specific rule needed. */
   *,
   *::before,
   *::after {
