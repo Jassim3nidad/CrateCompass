@@ -26,10 +26,15 @@ export function AppProviders({ children }: { readonly children: ReactNode }) {
         position="bottom-right"
         richColors
         closeButton
+        // Sonner's own default shadow, not a neumorphic recipe: a toast is a
+        // genuine floating overlay — transient, layered above the page,
+        // dismissed by the user — not a surface embedded in it, so a
+        // conventional drop-shadow is the correct read here (same reasoning
+        // as --elevation-1/2/3, kept for exactly this kind of element).
+        // Border removed to match the rest of the system.
         toastOptions={{
           classNames: {
-            toast:
-              "!border-[var(--border-strong)] !bg-[var(--surface-raised)] !text-[var(--foreground)]",
+            toast: "!bg-[var(--surface-raised)] !text-[var(--foreground)]",
             description: "!text-[var(--muted)]",
           },
         }}
