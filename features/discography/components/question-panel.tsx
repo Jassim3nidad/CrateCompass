@@ -94,7 +94,7 @@ export function QuestionPanel({
           </div>
           <MessageCircleQuestion
             aria-hidden="true"
-            className="size-6 shrink-0 text-[var(--electric)]"
+            className="size-6 shrink-0 text-[var(--electric-soft)]"
           />
         </div>
       </CardHeader>
@@ -104,7 +104,7 @@ export function QuestionPanel({
       </p>
 
       {initialMessages.length > 0 ? (
-        <details className="mb-4 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] p-3">
+        <details className="surface-sunken elev-inset mb-4 rounded-[var(--r-md)] p-3">
           <summary className="cursor-pointer text-sm text-[var(--muted)]">
             Earlier questions about {artistName} ({initialMessages.length})
           </summary>
@@ -209,7 +209,7 @@ function Outcome({ result }: { readonly result: AskResult }) {
     return (
       <div
         role="status"
-        className="rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--surface)] p-4"
+        className="surface-sunken elev-inset rounded-[var(--r-md)] p-4"
       >
         <p className="text-sm leading-6 whitespace-pre-line text-[var(--foreground)]">
           {result.answer}
@@ -261,7 +261,7 @@ function Outcome({ result }: { readonly result: AskResult }) {
     return (
       <div
         role="status"
-        className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] p-4"
+        className="surface-sunken elev-inset rounded-[var(--r-md)] p-4"
       >
         <p className="text-sm leading-6 text-[var(--foreground)]">
           {result.reason}
