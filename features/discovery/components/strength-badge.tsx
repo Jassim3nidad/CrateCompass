@@ -12,11 +12,18 @@ import { cn } from "@/lib/utils";
  */
 
 // Always nested inside a DiscoveryCard — flat, no raised-family shadow.
+// Text colours are the theme-aware split tokens, not literal hex: the
+// literals this replaced (#c3b4ff, #a8d2f0) were never touched by the
+// light-theme pass and measured 1.17–1.35:1 against their own composited
+// badge fill — effectively invisible. --accent-foreground/--violet-soft
+// and --electric-soft already exist for exactly this fill/foreground
+// split; this just adopts them instead of maintaining a second,
+// undocumented colour system.
 const styles: Record<MatchStrength, string> = {
   strong:
-    "bg-[color-mix(in_srgb,var(--violet)_16%,transparent)] text-[#c3b4ff]",
+    "bg-[color-mix(in_srgb,var(--violet)_16%,transparent)] text-[var(--violet-soft)]",
   moderate:
-    "bg-[color-mix(in_srgb,var(--electric)_12%,transparent)] text-[#a8d2f0]",
+    "bg-[color-mix(in_srgb,var(--electric)_12%,transparent)] text-[var(--electric-soft)]",
   emerging: "bg-[var(--surface-subtle)] text-[var(--muted)]",
 };
 
