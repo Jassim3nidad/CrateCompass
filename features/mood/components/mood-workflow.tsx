@@ -350,7 +350,7 @@ export function MoodWorkflow({
                 <dd className="text-[var(--foreground)]">
                   {entry.value}
                   {entry.isHintOnly ? (
-                    <span className="ml-2 rounded-full border border-[var(--border)] px-2 py-0.5 text-xs text-[var(--muted)]">
+                    <span className="ml-2 rounded-full bg-[var(--surface-subtle)] px-2 py-0.5 text-xs text-[var(--muted)]">
                       hint only
                     </span>
                   ) : null}
@@ -369,7 +369,7 @@ export function MoodWorkflow({
             </p>
           ) : null}
 
-          <div className="mt-6 border-t border-[var(--border)] pt-6">
+          <div className="mt-6 pt-6">
             <h3 className="text-base font-semibold text-[var(--foreground)]">
               Choose the artist this should build from
             </h3>
@@ -391,7 +391,9 @@ export function MoodWorkflow({
                       type="button"
                       onClick={() => chooseSeed(seed)}
                       disabled={pending}
-                      className="focus-ring flex w-full items-center justify-between gap-4 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] p-4 text-left transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--surface-raised)] disabled:opacity-50"
+                      // Nested inside a raised Card — sunken, not a second
+                      // raised surface. Hover only brightens the fill.
+                      className="focus-ring surface-sunken elev-inset hover:surface-raised flex w-full items-center justify-between gap-4 rounded-[var(--r-md)] p-4 text-left transition-[background-color] disabled:opacity-50"
                     >
                       <span className="min-w-0">
                         <span className="block font-semibold text-[var(--foreground)]">
@@ -449,7 +451,7 @@ export function MoodWorkflow({
             {draft.tracks.map((track) => (
               <li
                 key={track.id}
-                className="flex items-center justify-between gap-4 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] p-3"
+                className="surface-sunken elev-inset flex items-center justify-between gap-4 rounded-[var(--r-md)] p-3"
               >
                 <span className="min-w-0">
                   <span className="block text-sm font-semibold text-[var(--foreground)]">
@@ -475,7 +477,7 @@ export function MoodWorkflow({
             ))}
           </ol>
 
-          <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-[var(--border)] pt-6">
+          <div className="mt-6 flex flex-wrap items-center gap-3 pt-6">
             <Button
               type="button"
               variant="accent"
@@ -534,7 +536,7 @@ function CreationOutcome({
           href={result.playlistUrl}
           target="_blank"
           rel="noreferrer noopener"
-          className="focus-ring inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--border-strong)] bg-[var(--surface)] px-4 text-sm font-semibold text-[var(--foreground)] hover:bg-[var(--surface-raised)]"
+          className="focus-ring surface-sunken elev-inset hover:surface-raised inline-flex min-h-11 items-center gap-2 rounded-[var(--r-pill)] px-4 text-sm font-semibold text-[var(--foreground)]"
         >
           <ExternalLink aria-hidden="true" className="size-4" />
           Open in Spotify
@@ -567,7 +569,7 @@ function CreationOutcome({
           href={result.playlistUrl}
           target="_blank"
           rel="noreferrer noopener"
-          className="focus-ring mt-4 inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--border-strong)] bg-[var(--surface)] px-4 text-sm font-semibold text-[var(--foreground)] hover:bg-[var(--surface-raised)]"
+          className="focus-ring surface-sunken elev-inset hover:surface-raised mt-4 inline-flex min-h-11 items-center gap-2 rounded-[var(--r-pill)] px-4 text-sm font-semibold text-[var(--foreground)]"
         >
           <ExternalLink aria-hidden="true" className="size-4" />
           Open in Spotify
