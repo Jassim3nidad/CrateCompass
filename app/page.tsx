@@ -40,23 +40,60 @@ export default function Home() {
     <>
       <section className="relative overflow-hidden">
         <div aria-hidden="true" className="compass-grid absolute inset-0" />
-        <div className="page-shell relative grid min-h-[calc(100vh-4.25rem)] items-center gap-12 py-16 lg:grid-cols-[minmax(0,1.15fr)_minmax(22rem,0.65fr)]">
+        <div className="page-shell relative grid items-start gap-12 py-16 lg:grid-cols-[minmax(0,1.15fr)_minmax(22rem,0.65fr)]">
           <div className="max-w-4xl">
-            <div className="mb-7 flex flex-wrap items-center gap-3">
-              <span className="text-xs font-medium tracking-[0.18em] text-[var(--muted-dim)] uppercase">
-                Discovery, explained
-              </span>
-            </div>
-            <h1 className="font-display text-[clamp(3.75rem,9vw,8.7rem)] leading-[0.84] tracking-[-0.065em] text-balance text-[var(--foreground)]">
+            {/* The hero, led by the thing the product actually does rather
+                than an eyebrow-plus-headline asserting it. A trail is what
+                every other page in the app shows as evidence; showing one
+                here, honestly labelled as a sample, does the same work the
+                old giant headline was reaching for without the generic
+                hero-pattern shape (letterspaced caps -> huge serif -> gray
+                subtext) that shape has everywhere else on the web. */}
+            <p className="text-xs font-medium tracking-[0.18em] text-[var(--muted-dim)] uppercase">
+              A sample trail
+            </p>
+            <dl className="mt-4 border-t-[3px] border-double border-[var(--border-strong)] font-mono text-sm">
+              <div className="flex flex-wrap items-baseline gap-x-3 border-b border-[var(--border)] py-2.5">
+                <dt className="w-20 shrink-0 text-xs tracking-[0.1em] text-[var(--muted-dim)] uppercase">
+                  Seed
+                </dt>
+                <dd className="text-[var(--foreground)]">Radiohead</dd>
+              </div>
+              <div className="flex flex-wrap items-baseline gap-x-3 border-b border-[var(--border)] py-2.5">
+                <dt className="w-20 shrink-0 text-xs tracking-[0.1em] text-[var(--muted-dim)] uppercase">
+                  Related
+                </dt>
+                <dd className="text-[var(--foreground)]">
+                  Sigur Rós{" "}
+                  <span className="text-[var(--muted)]">
+                    · strong link · 92% · via ListenBrainz
+                  </span>
+                </dd>
+              </div>
+              <div className="flex flex-wrap items-baseline gap-x-3 py-2.5">
+                <dt className="w-20 shrink-0 text-xs tracking-[0.1em] text-[var(--muted-dim)] uppercase">
+                  Evidence
+                </dt>
+                <dd className="text-[var(--muted)]">
+                  shared tags: post-rock, art rock
+                </dd>
+              </div>
+            </dl>
+            <p className="mt-3 text-xs text-[var(--muted-dim)]">
+              Illustrative, not a live search — every real trail names its own
+              provider, the way this one names ListenBrainz.
+            </p>
+
+            <h1 className="font-display mt-8 text-4xl leading-[1.05] tracking-[-0.04em] text-balance text-[var(--foreground)] sm:text-5xl">
               Find the thread{" "}
               <span className="text-[var(--muted-dim)]">between records.</span>
             </h1>
-            <p className="mt-8 max-w-2xl text-lg leading-8 text-[var(--muted)] sm:text-xl">
+            <p className="mt-5 max-w-2xl text-lg leading-8 text-[var(--muted)]">
               CrateCompass helps you understand why an artist might fit,
               translate a mood into a direction, and keep the discoveries worth
               returning to.
             </p>
-            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Button asChild size="lg" variant="accent">
                 <Link href="/discover">
                   Start with an artist
