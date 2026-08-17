@@ -47,7 +47,7 @@ export default async function MoodPage({ searchParams }: MoodPageProps) {
       {callback ? (
         <p
           role={callback.tone === "success" ? "status" : "alert"}
-          className={`mb-6 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] p-4 text-sm leading-6 ${
+          className={`surface-raised elev-raised mb-6 rounded-[var(--r-md)] p-4 text-sm leading-6 ${
             callback.tone === "success"
               ? "text-[var(--foreground)]"
               : "text-[var(--danger-soft)]"
