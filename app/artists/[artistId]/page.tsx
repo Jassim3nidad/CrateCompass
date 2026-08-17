@@ -234,11 +234,14 @@ function ArtistShell({ artistId }: { readonly artistId: string }) {
               />
             </div>
           </CardHeader>
+          {/* EmptyState is its own sunken Card, already nested inside this
+              raised one — a raised action button here would be a third
+              level (raised > sunken > raised). Flat collapses it. */}
           <EmptyState
             title="No artist to map"
             description={`"${artistId}" is not a MusicBrainz identifier. Start from discovery to pick a canonical artist, and the map fills in from there.`}
             action={
-              <Button asChild variant="secondary">
+              <Button asChild variant="ghost">
                 <Link href="/discover">Go to discovery</Link>
               </Button>
             }
