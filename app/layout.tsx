@@ -1,9 +1,11 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import type { ReactNode } from "react";
 
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import { AppProviders } from "@/components/providers/app-providers";
+import { THEME_STORAGE_KEY } from "@/lib/theme";
 
 import "./globals.css";
 
@@ -30,8 +32,15 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="en" data-scroll-behavior="smooth">
+    <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
       <body>
+        <Script id="theme-init" strategy="beforeInteractive">
+          {`try {
+            if (localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)}) === "light") {
+              document.documentElement.setAttribute("data-theme", "light");
+            }
+          } catch (e) {}`}
+        </Script>
         <AppProviders>
           <a href="#main-content" className="skip-link">
             Skip to content
