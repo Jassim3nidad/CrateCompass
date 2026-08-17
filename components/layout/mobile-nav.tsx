@@ -110,7 +110,7 @@ export function MobileNav({
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpenedAt(open ? null : pathname)}
-        className="focus-ring grid size-11 place-items-center rounded-full border border-[var(--border-strong)] bg-[var(--surface)] text-[var(--foreground)] transition-colors duration-[var(--duration-fast)] hover:bg-[var(--surface-raised)] motion-reduce:transition-none"
+        className="focus-ring surface-raised elev-flat hover:elev-raised active:elev-inset grid size-11 place-items-center rounded-[var(--r-md)] text-[var(--text-primary)] transition-shadow duration-[var(--duration-fast)] motion-reduce:transition-none"
       >
         {open ? (
           <X aria-hidden="true" className="size-5" />
@@ -125,7 +125,7 @@ export function MobileNav({
       <div
         id={panelId}
         hidden={!open}
-        className="motion-expand absolute right-0 mt-3 w-[min(21rem,calc(100vw-2rem))] rounded-3xl border border-[var(--border-strong)] bg-[var(--surface-raised)] p-3 shadow-[var(--elevation-3)]"
+        className="motion-expand surface-raised elev-raised absolute right-0 mt-3 w-[min(21rem,calc(100vw-2rem))] rounded-[var(--r-lg)] p-3"
       >
         <nav
           aria-label="Mobile navigation"
@@ -141,12 +141,12 @@ export function MobileNav({
               <NavLink
                 key={item.href}
                 href={item.href}
-                className="focus-ring flex min-h-14 items-center gap-3 rounded-2xl px-3 text-sm text-[var(--muted)] transition-colors duration-[var(--duration-fast)] hover:bg-[var(--surface)] hover:text-[var(--foreground)] aria-[current=page]:bg-[var(--surface)] aria-[current=page]:text-[var(--foreground)] motion-reduce:transition-none"
+                className="focus-ring hover:surface-sunken hover:elev-inset aria-[current=page]:surface-sunken aria-[current=page]:elev-inset flex min-h-14 items-center gap-3 rounded-[var(--r-md)] px-3 text-sm text-[var(--text-secondary)] transition-[color,box-shadow] duration-[var(--duration-fast)] hover:text-[var(--text-primary)] aria-[current=page]:text-[var(--text-primary)] motion-reduce:transition-none"
               >
                 <Icon aria-hidden="true" className="size-4 shrink-0" />
                 <span>
                   <span className="block font-semibold">{item.label}</span>
-                  <span className="block text-xs text-[var(--muted-dim)]">
+                  <span className="block text-xs text-[var(--text-muted)]">
                     {item.description}
                   </span>
                 </span>
