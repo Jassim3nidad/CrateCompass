@@ -136,7 +136,7 @@ export function DiscoveryResults({
       </p>
 
       {undoTarget ? (
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-subtle)] p-3">
+        <div className="surface-raised elev-raised mb-4 flex flex-wrap items-center justify-between gap-3 rounded-[var(--r-md)] p-3">
           <p className="text-sm text-[var(--muted)]">
             {undoTarget.name} dismissed for {seedName}.
           </p>
@@ -188,7 +188,7 @@ export function DiscoveryResults({
         </p>
       ) : null}
 
-      <div className="mt-6 flex flex-col gap-4 border-t border-[var(--border)] pt-6 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-6 flex flex-col gap-4 pt-6 sm:flex-row sm:items-center sm:justify-between">
         {hasMore ? (
           <Button
             type="button"
