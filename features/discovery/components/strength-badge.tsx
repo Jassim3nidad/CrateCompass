@@ -11,13 +11,13 @@ import { cn } from "@/lib/utils";
  * measure of how alike two artists are.
  */
 
+// Always nested inside a DiscoveryCard — flat, no raised-family shadow.
 const styles: Record<MatchStrength, string> = {
   strong:
-    "border-[color-mix(in_srgb,var(--violet)_45%,transparent)] bg-[color-mix(in_srgb,var(--violet)_16%,transparent)] text-[#c3b4ff]",
+    "bg-[color-mix(in_srgb,var(--violet)_16%,transparent)] text-[#c3b4ff]",
   moderate:
-    "border-[color-mix(in_srgb,var(--electric)_40%,transparent)] bg-[color-mix(in_srgb,var(--electric)_12%,transparent)] text-[#a8d2f0]",
-  emerging:
-    "border-[var(--border-strong)] bg-[var(--surface-subtle)] text-[var(--muted)]",
+    "bg-[color-mix(in_srgb,var(--electric)_12%,transparent)] text-[#a8d2f0]",
+  emerging: "bg-[var(--surface-subtle)] text-[var(--muted)]",
 };
 
 const labels: Record<MatchStrength, string> = {
@@ -38,7 +38,7 @@ export function StrengthBadge({
   return (
     <span
       className={cn(
-        "inline-flex min-h-7 items-center rounded-full border px-2.5 text-xs font-semibold",
+        "inline-flex min-h-7 items-center rounded-full px-2.5 text-xs font-semibold",
         styles[strength],
         className,
       )}
