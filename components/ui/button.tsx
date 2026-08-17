@@ -5,26 +5,38 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded-full border text-sm font-semibold tracking-[-0.01em] transition-[color,background-color,border-color,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] disabled:pointer-events-none disabled:opacity-45 active:translate-y-px motion-reduce:transition-none motion-reduce:active:translate-y-0",
+  "focus-ring inline-flex min-h-11 items-center justify-center gap-2 text-sm font-semibold tracking-[-0.01em] transition-[color,background-color,box-shadow,filter,transform] duration-[var(--duration-fast)] ease-[var(--ease-out)] disabled:pointer-events-none disabled:cursor-not-allowed disabled:shadow-none disabled:surface-base disabled:text-[var(--text-muted)] active:translate-y-px motion-reduce:transition-none motion-reduce:active:translate-y-0",
   {
     variants: {
       variant: {
+        // Same treatment as `secondary`: the reference palette's near-white
+        // fill this used is exactly the "white-on-gray" the brief rules out.
+        // Both variants keep their names (no consumer prop changes) and
+        // simply render identically now.
         primary:
-          "border-transparent bg-[var(--foreground)] px-5 text-[var(--background)] hover:bg-white",
+          "surface-raised px-5 text-[var(--text-primary)] elev-flat hover:elev-raised active:elev-inset",
+        // The brief's one coloured-shadow element.
         accent:
-          "border-transparent bg-[var(--violet)] px-5 text-white hover:bg-[var(--violet-strong)]",
+          "bg-[image:var(--accent-gradient)] px-5 text-[var(--text-on-accent)] elev-accent hover:brightness-95",
         secondary:
-          "border-[var(--border-strong)] bg-[var(--surface)] px-5 text-[var(--foreground)] hover:border-[var(--muted)] hover:bg-[var(--surface-raised)]",
+          "surface-raised px-5 text-[var(--text-primary)] elev-flat hover:elev-raised active:elev-inset",
         ghost:
-          "border-transparent bg-transparent px-4 text-[var(--muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]",
+          "bg-transparent px-4 text-[var(--text-secondary)] hover:surface-raised hover:elev-flat hover:text-[var(--text-primary)]",
+        // Same raised/flat shape language as secondary — the brief reserves
+        // the only coloured shadow for `accent`, so danger is signalled by
+        // label colour alone, not a second coloured shadow.
         destructive:
-          "border-[color-mix(in_srgb,var(--danger)_45%,transparent)] bg-[color-mix(in_srgb,var(--danger)_12%,transparent)] px-5 text-[var(--danger-soft)] hover:bg-[color-mix(in_srgb,var(--danger)_20%,transparent)]",
+          "surface-raised px-5 text-[var(--danger-soft)] elev-flat hover:elev-raised active:elev-inset",
       },
       size: {
-        default: "h-11",
-        sm: "h-9 min-h-9 px-3 text-xs",
-        lg: "h-12 px-6 text-base",
-        icon: "size-11 p-0",
+        default: "h-11 rounded-[var(--r-pill)]",
+        // 36px is fine as a visual size on desktop, but fails the 44px touch
+        // floor — `touch-target-sm` (globals.css) restores it to 44px under
+        // `@media (pointer: coarse)` only, so mouse users keep the smaller
+        // control.
+        sm: "h-9 min-h-9 touch-target-sm px-3 text-xs rounded-[var(--r-pill)]",
+        lg: "h-12 px-6 text-base rounded-[var(--r-pill)]",
+        icon: "size-11 p-0 rounded-[var(--r-md)]",
       },
     },
     defaultVariants: {
