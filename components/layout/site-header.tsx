@@ -65,19 +65,19 @@ export async function SiteHeader() {
 
         <div className="flex items-center gap-2">
           <ThemeToggle />
+          {/* MobileNav's panel is elev-raised (it's a floating drawer, that's
+              correct); a raised secondary/accent button slotted into it
+              stacks a second raised claim on the same surface. ghost is
+              flat at rest, matching the panel's own nav-link children. */}
           <MobileNav>
             {isAuthenticated ? (
               <form action={signOut}>
-                <Button
-                  type="submit"
-                  variant="secondary"
-                  className="mt-2 w-full"
-                >
+                <Button type="submit" variant="ghost" className="mt-2 w-full">
                   Sign out
                 </Button>
               </form>
             ) : (
-              <Button asChild variant="accent" className="mt-2 w-full">
+              <Button asChild variant="ghost" className="mt-2 w-full">
                 <Link href="/auth/sign-in">Sign in</Link>
               </Button>
             )}
