@@ -123,7 +123,7 @@ export function ReleaseTimeline({
           {visible.map((entry) => (
             <li
               key={entry.mbid}
-              className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] p-3"
+              className="surface-sunken elev-inset flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 rounded-[var(--r-md)] p-3"
             >
               <span className="min-w-0">
                 <span className="block text-sm font-semibold text-[var(--foreground)]">
