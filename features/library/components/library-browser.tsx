@@ -2,7 +2,14 @@
 
 import { Undo2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useId, useRef, useState, useTransition } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  useTransition,
+  type ReactNode,
+} from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -200,7 +207,7 @@ export function LibraryBrowser({
               id={`${searchId}-sort`}
               value={sort}
               onChange={(event) => navigate({ sort: event.target.value })}
-              className="focus-ring mt-2 min-h-11 w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--foreground)]"
+              className="focus-ring surface-sunken elev-inset mt-2 min-h-11 w-full rounded-[var(--r-pill)] px-3 text-sm text-[var(--foreground)]"
             >
               {SORT_MODES.map((mode) => (
                 <option key={mode} value={mode}>
@@ -217,16 +224,13 @@ export function LibraryBrowser({
           className="mt-4 flex flex-wrap gap-2"
         >
           {ENTITY_FILTERS.map((filter) => (
-            <Button
+            <FilterChip
               key={filter.value}
-              type="button"
-              size="sm"
-              variant={entity === filter.value ? "accent" : "secondary"}
-              aria-pressed={entity === filter.value}
+              active={entity === filter.value}
               onClick={() => navigate({ type: filter.value })}
             >
               {filter.label}
-            </Button>
+            </FilterChip>
           ))}
         </div>
 
@@ -237,16 +241,13 @@ export function LibraryBrowser({
             className="mt-4 flex flex-wrap gap-2"
           >
             {vocabulary.map((tag) => (
-              <Button
+              <FilterChip
                 key={tag}
-                type="button"
-                size="sm"
-                variant={activeTags.includes(tag) ? "accent" : "secondary"}
-                aria-pressed={activeTags.includes(tag)}
+                active={activeTags.includes(tag)}
                 onClick={() => toggleTag(tag)}
               >
                 {tag}
-              </Button>
+              </FilterChip>
             ))}
             {activeTags.length > 1 ? (
               <p className="w-full text-xs text-[var(--muted-dim)]">
@@ -260,7 +261,7 @@ export function LibraryBrowser({
       {undo ? (
         <div
           role="status"
-          className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--surface-raised)] p-4"
+          className="surface-raised elev-raised flex flex-wrap items-center justify-between gap-3 rounded-[var(--r-md)] p-4"
         >
           <p className="text-sm text-[var(--foreground)]">
             {undo.label} was removed. Adding it back creates a new entry dated
@@ -385,6 +386,39 @@ export function LibraryBrowser({
   );
 }
 
+/**
+ * A filter, not a call to action — deliberately not the shared `Button`.
+ * Raised inside the search Card's `quiet` (sunken) surface would read
+ * inverted, and a row of these competing as raised CTAs would drown out
+ * the one control on the page that actually is one (Search). Pressed-in
+ * reads as "selected" here, which is the correct language inside a well:
+ * inactive is flat with no shadow, active sinks in with accent text.
+ */
+function FilterChip({
+  active,
+  onClick,
+  children,
+}: {
+  readonly active: boolean;
+  readonly onClick: () => void;
+  readonly children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={`focus-ring touch-target-sm inline-flex h-9 items-center justify-center rounded-[var(--r-pill)] px-3 text-xs font-semibold tracking-[-0.01em] transition-[background-color,box-shadow,color] duration-[var(--duration-fast)] motion-reduce:transition-none ${
+        active
+          ? "surface-sunken elev-inset text-[var(--accent-foreground)]"
+          : "bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
 function LibraryCard({
   item,
   selected,
@@ -439,7 +473,7 @@ function LibraryCard({
       ) : null}
 
       {item.explanation ? (
-        <div className="mt-4 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] p-3">
+        <div className="surface-sunken elev-inset mt-4 rounded-[var(--r-md)] p-3">
           <p className="text-sm leading-6 text-[var(--foreground)]">
             {item.explanation.snapshot.summary}
           </p>
@@ -468,7 +502,7 @@ function LibraryCard({
           {item.tags.map((tag) => (
             <li
               key={tag}
-              className="rounded-full border border-[var(--border)] bg-[var(--surface-subtle)] px-3 py-1 text-xs text-[var(--muted)]"
+              className="rounded-full bg-[var(--surface-subtle)] px-3 py-1 text-xs text-[var(--muted)]"
             >
               {tag}
             </li>
