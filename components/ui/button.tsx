@@ -15,9 +15,12 @@ const buttonVariants = cva(
         // simply render identically now.
         primary:
           "surface-raised px-5 text-[var(--text-primary)] elev-flat hover:elev-raised active:elev-inset",
-        // The brief's one coloured-shadow element.
+        // The brief's one coloured-shadow element. Solid fill, not a
+        // gradient — see --accent-glow's comment in globals.css for why a
+        // diagonal gradient was dropped once it stopped being a contrast
+        // workaround.
         accent:
-          "bg-[image:var(--accent-gradient)] px-5 text-[var(--text-on-accent)] elev-accent hover:brightness-95",
+          "bg-[var(--accent-deep)] px-5 text-[var(--text-on-accent)] elev-accent hover:brightness-95",
         secondary:
           "surface-raised px-5 text-[var(--text-primary)] elev-flat hover:elev-raised active:elev-inset",
         ghost:

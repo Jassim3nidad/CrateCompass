@@ -278,7 +278,7 @@ export function MoodWorkflow({
                 type="checkbox"
                 checked={isPublic}
                 onChange={(event) => setIsPublic(event.target.checked)}
-                className="size-4 accent-[var(--violet)]"
+                className="size-4 accent-[var(--navy)]"
               />
               Make the playlist public
             </label>
@@ -288,7 +288,7 @@ export function MoodWorkflow({
                 type="checkbox"
                 checked={avoidExplicit}
                 onChange={(event) => setAvoidExplicit(event.target.checked)}
-                className="size-4 accent-[var(--violet)]"
+                className="size-4 accent-[var(--navy)]"
               />
               Exclude explicit tracks
             </label>

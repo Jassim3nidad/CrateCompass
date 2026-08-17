@@ -101,7 +101,7 @@ export function WorkflowProgress({ stage }: { readonly stage: WorkflowStage }) {
                 ) : isActive ? (
                   <Loader2
                     aria-hidden="true"
-                    className="size-4 animate-spin text-[var(--violet-soft)] motion-reduce:animate-none"
+                    className="size-4 animate-spin text-[var(--accent-foreground)] motion-reduce:animate-none"
                   />
                 ) : (
                   <span

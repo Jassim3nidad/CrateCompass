@@ -94,7 +94,7 @@ export function QuestionPanel({
           </div>
           <MessageCircleQuestion
             aria-hidden="true"
-            className="size-6 shrink-0 text-[var(--electric-soft)]"
+            className="size-6 shrink-0 text-[var(--accent-foreground)]"
           />
         </div>
       </CardHeader>

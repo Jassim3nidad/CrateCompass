@@ -10,36 +10,40 @@
   --border-strong: #3a3843;
   --muted: #aaa6b0;
   --muted-dim: #928e99;
-  --violet: #7357e8;
-  /* Deeper than --violet, not lighter. The accent button carries white text,
-     and the previous #856cf0 gave it 3.88:1 — below AA. Automated scans missed
-     it for two phases because no button was ever hovered during a scan. */
-  --violet-strong: #6344d9;
-  /* The readable end of the violet family: 7.9:1 on --background, 7.4:1 on
-     --surface. Text and icons use this; --violet is a fill colour and fails as
-     a foreground. It existed as a literal #aa96ff in two places before Phase 10
-     named it, which is why the home page had a colour the token set did not. */
-  --violet-soft: #aa96ff;
-  --amber: #d89b45;
-  --amber-soft: #edbc75;
-  --electric: #57a6dd;
-  /* --electric has no --electric-soft-style sibling because, unlike
-     violet/amber/success/danger, it was never split — it's used both as a
-     fill (strength-badge's "moderate" tint) and as foreground (icons)
-     under the one name. That's fine while both readings share one value,
-     but light theme needs a darker foreground without muddying the fill,
-     so this is the split, added now rather than retrofitted. Dark keeps
-     them identical since --electric already passes as foreground here. */
-  --electric-soft: var(--electric);
+  /* Structural/primary accent, replacing violet. Deep archival navy, not the
+     reference palette's electric blue — chosen because it's a fill colour
+     that stays theme-invariant: dark enough to hold white button text at
+     12.38:1 in either theme, so unlike violet it never needs tuning close
+     to the 4.5:1 floor, and never needs a per-theme swap the way its own
+     readable text does (see --accent-foreground below). */
+  --navy: #1c3557;
+  /* The gradient-end / darkest fill, and light theme's readable text member
+     (15.39:1 white-on-fill; 12.25:1 as light-theme --accent-foreground). */
+  --navy-deep: #122540;
+  /* Secondary/highlight accent. Fill-only in both themes — badges, the
+     catalog stamp, brand marks — never light-theme body text: a gold dark
+     enough to clear 4.5:1 on a light surface has to go brown, which reads
+     as a third, muddier colour rather than gold. --navy-deep already
+     covers light-theme foreground duty, so gold doesn't need to. */
+  --gold: #b8912e;
+  /* Dark theme's readable text member — eyebrows, links, icon accents,
+     focus. 9.18:1 worst case (neu-raised). Its own token, not an alias of
+     --navy: the fill/foreground split is per-family here, not per-value. */
+  --gold-foreground: #e3b94d;
+  /* Shifted 11° away from --gold's 43° hue (old amber sat at 35°, close
+     enough to read as the same warm colour once gold existed alongside
+     it — brand and warning would have shared a signal). Now rust/burnt-
+     orange against gold's brass; re-verified as a hue pair at badge size,
+     not just in a swatch. */
+  --amber: #c56a2e;
+  --amber-soft: #e8935a;
   --success: #55a77b;
   --success-soft: #8fd6ae;
   --danger: #c45c67;
   --danger-soft: #f19aa3;
-  --focus: #9c87f5;
-  /* The accent family's text alias. Referenced by /settings before Phase 10 and
-     never defined, so the declaration was invalid and the link fell back to
-     inherited colour. */
-  --accent-soft: var(--violet-soft);
+  /* Same value as --gold-foreground: the focus ring is the accent family's
+     highest-visibility member, and dark theme's is gold. */
+  --focus: #e3b94d;
 
   /* Motion. Four durations and two curves, so a transition is chosen from a
      scale rather than invented per component. --ease-out decelerates hard,
@@ -67,13 +71,15 @@
    * `--neu-*` reads correctly next to `--elev-*`, the recipes it's always
    * paired with, and can't collide with anything legacy ever will.
    *
-   * The accent reuses the app's existing violet rather than the reference
-   * palette's blue — kept out of the fill/foreground trap the violet family
-   * already solved once: `--accent` is a fill colour only (3.1:1 on
-   * --neu-base, fails as text), `--accent-foreground` is the readable
-   * member for icons and text.
+   * The accent is deep archival navy, not the reference palette's electric
+   * blue — kept in the fill/foreground shape the old violet family used:
+   * `--accent` is a fill colour (navy holds white button text easily but
+   * fails as small text on a near-black surface), `--accent-foreground` is
+   * the readable member for icons and text, and which colour plays that
+   * role now swaps per theme (gold in dark, navy in light — see the
+   * tokens' own comments above and in the light override below).
    */
-  /* Neutral gray, not a tint of the accent violet — depth reads through
+  /* Neutral gray, not a tint of the accent — depth reads through
      --depth-highlight and shadow direction, not through a warm/cool base.
      Close to the original --background (#0b0b0f) rather than a midtone:
      raised is ~3%L lighter, sunken ~2%L darker, base itself ~8%L (vs. the
@@ -93,20 +99,25 @@
      without one. Neutralised to transparent in the light override below. */
   --depth-highlight: inset 0 1px 0 rgb(255 255 255 / 0.06);
 
-  --accent: var(--violet);
-  --accent-deep: var(--violet-strong);
-  --accent-foreground: var(--violet-soft);
-  /* Stops are --accent -> --accent-deep, not a synthetically lighter start:
-     a #8a72f0 light stop measured 3.65:1 for the white button label riding on
-     top of it, under the 4.5:1 floor. --accent itself is the lightest point
-     that still clears it (4.93:1), so the gradient stays inside the family
-     already vetted as a fill colour. */
-  --accent-gradient: linear-gradient(
-    135deg,
-    var(--accent) 0%,
-    var(--accent-deep) 100%
-  );
-  --accent-glow: rgb(115 87 232 / 0.35);
+  --accent: var(--navy);
+  --accent-deep: var(--navy-deep);
+  /* Dark theme's readable member is gold, not a navy shade — navy text on a
+     near-black surface can't clear 4.5:1 without going pale enough to stop
+     reading as navy. Same failure the old violet/violet-soft split existed
+     to avoid, just in the other direction: too dark instead of too light. */
+  --accent-foreground: var(--gold-foreground);
+  /* No gradient. Its predecessor was "near-flat... for contrast reasons" —
+     a workaround, not a design choice, forced by how close violet's light
+     stop sat to the 4.5:1 floor. Navy has 12-15:1 of headroom and doesn't
+     need one, but a diagonal-gradient CTA reads as generic-SaaS regardless
+     of how steep it is; a solid archival fill spends that headroom on
+     looking like ink instead. */
+  /* Gold, not navy: a glow only reads when it's brighter than what it sits
+     on. Navy's relative luminance is 0.035 against the dark background's
+     0.0034 — barely a 10x delta, imperceptible as a bloom. Gold's is 0.52,
+     a 150x delta. (Old violet's was 0.163, a 47x delta — never noticed
+     because "clearly visible" has a lot of room above "just barely".) */
+  --accent-glow: rgb(227 185 77 / 0.35);
 
   --text-primary: var(--foreground);
   --text-secondary: #b7b2bd;
@@ -164,41 +175,52 @@
   --text-primary: #2d3440;
   --text-secondary: #5a6472;
   --text-muted: #5c6674;
-  --accent-foreground: #5a3fd6;
+  /* Light theme's readable member is navy, not gold — the inverse of dark's
+     problem: gold dark enough to clear 4.5:1 here has to go brown, which
+     isn't gold anymore. --navy-deep already clears 12.25:1, so light theme
+     just reuses the fill's own darkest shade as its text colour instead of
+     needing a second gold value tuned for it. */
+  --accent-foreground: var(--navy-deep);
 
-  --focus: #5433c9;
+  --focus: var(--navy-deep);
+
+  /* Navy reads as a colour, not a glow, against a light page — dark enough
+     that this is really a tinted drop-shadow, the same read as the
+     --shadow-dark override just above. Alpha bumped slightly (.35 -> .4) on
+     the same logic as that override: pale/soft doesn't read against a light
+     surface, plain colour at enough alpha does. */
+  --accent-glow: rgb(18 37 64 / 0.4);
 
   /**
    * The dark-tuned "-soft" tokens (--amber-soft, --success-soft,
-   * --danger-soft, --violet-soft) and --electric-soft are the foreground
-   * half of an existing fill/foreground split (base --amber/--success/
-   * --danger/--violet stay theme-invariant fills, used only via
-   * color-mix() — grepped zero direct usages of the -soft tokens as a
-   * fill anywhere), so darkening them further never touches a tinted
-   * background. First pass only tested these against plain surface
-   * tokens; StatusBadge and StrengthBadge actually render them on top of
-   * a color-mix() tint of the corresponding fill token, which is a
-   * different (and sometimes harder) background. Re-measured against the
-   * real composited badge fill on every surface it renders on (worst
-   * case noted, resolving color-mix(fill P%, transparent) as fill at P%
-   * opacity over the surface):
-   *   amber-soft    5.10:1 (neu-sunken, composited amber(10%) fill)
+   * --danger-soft) are the foreground half of an existing fill/foreground
+   * split (base --amber/--success/--danger stay theme-invariant fills, used
+   * only via color-mix()). --navy-deep and --gold-foreground cover this
+   * role for the accent family directly through --accent-foreground above,
+   * rather than through a "-soft" alias — there's no light-theme gold
+   * reading to alias away from, so the extra indirection the old violet/
+   * electric family needed doesn't apply here.
+   *
+   * Re-measured against the real composited badge fill on every surface it
+   * renders on (worst case noted, resolving color-mix(fill P%, transparent)
+   * as fill at P% opacity over the surface):
+   *   amber-soft    4.74:1 (neu-sunken, composited amber(10%) fill) —
+   *                 amber's hue shifted (see :root), so this is measured
+   *                 fresh against the new value, not carried over from the
+   *                 old amber's 5.10:1.
    *   success-soft  4.81:1 (neu-sunken, composited success(10%) fill) —
-   *                 already cleared the badge case at its old value, left
-   *                 unchanged.
-   *   danger-soft   4.85:1 (neu-sunken, composited danger(10%) fill)
-   *   violet-soft   5.19:1 (neu-sunken, composited violet(16%) fill,
-   *                 StrengthBadge's "strong" tier) — same value as
-   *                 --accent-foreground, same family, reused rather than
-   *                 inventing a second violet.
-   *   electric-soft 5.12:1 (neu-sunken, composited electric(12%) fill,
-   *                 StrengthBadge's "moderate" tier)
+   *                 unaffected by this palette change, unchanged.
+   *   danger-soft   4.85:1 (neu-sunken, composited danger(10%) fill) —
+   *                 unaffected by this palette change, unchanged.
+   *   --accent-foreground (navy-deep) on StrengthBadge's "strong" tier
+   *                 (composited navy(16%) fill): 9.29:1.
+   *   --accent-foreground (navy-deep) on StrengthBadge's "moderate" tier
+   *                 (composited gold(12%) fill, replacing the old
+   *                 electric(12%)/electric-soft pair): 11.16:1.
    */
-  --amber-soft: #7d5210;
+  --amber-soft: #9a4315;
   --success-soft: #1a6b42;
   --danger-soft: #a3323f;
-  --violet-soft: #4f37c2;
-  --electric-soft: #155d8f;
 
   /**
    * Legacy tokens, given light values instead of being migrated one
@@ -350,12 +372,12 @@ body {
   background:
     radial-gradient(
       circle at 82% -10%,
-      rgb(115 87 232 / 0.12),
+      rgb(28 53 87 / 0.12),
       transparent 28rem
     ),
     radial-gradient(
       circle at 5% 20%,
-      rgb(216 155 69 / 0.07),
+      rgb(184 145 46 / 0.07),
       transparent 24rem
     ),
     var(--neu-base);
@@ -365,7 +387,7 @@ body {
 }
 
 ::selection {
-  background: color-mix(in srgb, var(--violet) 55%, transparent);
+  background: color-mix(in srgb, var(--navy) 55%, transparent);
   color: white;
 }
 
@@ -416,8 +438,8 @@ summary {
 
 .noise-surface {
   background:
-    radial-gradient(circle at 15% 20%, rgb(216 155 69 / 0.12), transparent 28%),
-    radial-gradient(circle at 88% 15%, rgb(115 87 232 / 0.18), transparent 32%),
+    radial-gradient(circle at 15% 20%, rgb(184 145 46 / 0.12), transparent 28%),
+    radial-gradient(circle at 88% 15%, rgb(28 53 87 / 0.18), transparent 32%),
     var(--neu-raised);
 }
 

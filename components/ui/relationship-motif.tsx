@@ -108,7 +108,7 @@ export function RelationshipMotif({
         cy={CENTRE.y}
         r={26}
         fill="var(--surface-raised)"
-        stroke="color-mix(in srgb, var(--violet) 55%, var(--border))"
+        stroke="color-mix(in srgb, var(--navy) 55%, var(--border))"
         strokeWidth={2}
         className="motion-orbit"
       />
@@ -116,7 +116,7 @@ export function RelationshipMotif({
         cx={CENTRE.x}
         cy={CENTRE.y}
         r={7}
-        fill="var(--violet-soft)"
+        fill="var(--accent-foreground)"
         className="motion-orbit"
       />
     </svg>

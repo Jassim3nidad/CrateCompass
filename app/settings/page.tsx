@@ -97,7 +97,7 @@ export default async function SettingsPage({
             ))}
             <Link
               href="/settings/connections"
-              className="focus-ring inline-flex min-h-11 items-center gap-2 rounded-full text-sm font-semibold text-[var(--accent-soft)] underline underline-offset-4 transition-colors duration-[var(--duration-fast)] hover:text-[var(--foreground)] motion-reduce:transition-none"
+              className="focus-ring inline-flex min-h-11 items-center gap-2 rounded-full text-sm font-semibold text-[var(--accent-foreground)] underline underline-offset-4 transition-colors duration-[var(--duration-fast)] hover:text-[var(--foreground)] motion-reduce:transition-none"
             >
               Manage Spotify connection
               <ArrowRight aria-hidden="true" className="size-4" />

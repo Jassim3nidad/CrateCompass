@@ -12,18 +12,20 @@ import { cn } from "@/lib/utils";
  */
 
 // Always nested inside a DiscoveryCard — flat, no raised-family shadow.
-// Text colours are the theme-aware split tokens, not literal hex: the
-// literals this replaced (#c3b4ff, #a8d2f0) were never touched by the
-// light-theme pass and measured 1.17–1.35:1 against their own composited
-// badge fill — effectively invisible. --accent-foreground/--violet-soft
-// and --electric-soft already exist for exactly this fill/foreground
-// split; this just adopts them instead of maintaining a second,
-// undocumented colour system.
+// "strong" and "moderate" both read through --accent-foreground (the same
+// theme-swapped text colour --electric-soft/--violet-soft used to split
+// between them) but differ by which brand fill sits underneath — navy for
+// the primary/structural read, gold for the secondary/highlight one — so
+// the two tiers stay visually distinct by hue rather than by opacity alone
+// now that --electric (a second, unrelated blue) is retired in favour of
+// the app's own navy. Composited-fill contrast re-verified for both tiers,
+// both themes — see the light-theme --amber-soft comment block in
+// globals.css for the worked numbers.
 const styles: Record<MatchStrength, string> = {
   strong:
-    "bg-[color-mix(in_srgb,var(--violet)_16%,transparent)] text-[var(--violet-soft)]",
+    "bg-[color-mix(in_srgb,var(--navy)_16%,transparent)] text-[var(--accent-foreground)]",
   moderate:
-    "bg-[color-mix(in_srgb,var(--electric)_12%,transparent)] text-[var(--electric-soft)]",
+    "bg-[color-mix(in_srgb,var(--gold)_12%,transparent)] text-[var(--accent-foreground)]",
   emerging: "bg-[var(--surface-subtle)] text-[var(--muted)]",
 };
 

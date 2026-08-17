@@ -446,7 +446,7 @@ function LibraryCard({
             type="checkbox"
             checked={selected}
             onChange={onToggle}
-            className="size-4 accent-[var(--violet)]"
+            className="size-4 accent-[var(--navy)]"
           />
           <span className="sr-only">Select {item.artistName}</span>
           {item.sourceType}

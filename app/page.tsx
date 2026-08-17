@@ -24,14 +24,14 @@ const valueCards = [
     description:
       "Write the room, weather, pace, and edges of a mood. CrateCompass turns language into reviewable discovery criteria.",
     icon: Sparkles,
-    accent: "text-[var(--violet-soft)]",
+    accent: "text-[var(--accent-foreground)]",
   },
   {
     title: "Read the discography",
     description:
       "Explore albums, EPs, singles, dates, and relationships through canonical MusicBrainz context with visible references.",
     icon: BookOpenText,
-    accent: "text-[var(--electric-soft)]",
+    accent: "text-[var(--accent-foreground)]",
   },
 ] as const;
 
@@ -85,7 +85,7 @@ export default function Home() {
                 </div>
                 <Compass
                   aria-hidden="true"
-                  className="size-7 shrink-0 text-[var(--violet-soft)]"
+                  className="size-7 shrink-0 text-[var(--accent-foreground)]"
                 />
               </div>
             </div>

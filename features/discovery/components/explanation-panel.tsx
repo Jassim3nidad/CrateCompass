@@ -83,7 +83,7 @@ export function ExplanationPanel({
       >
         <Sparkles
           aria-hidden="true"
-          className="size-4 text-[var(--violet-soft)]"
+          className="size-4 text-[var(--accent-foreground)]"
         />
         Why this match?
         <ChevronDown

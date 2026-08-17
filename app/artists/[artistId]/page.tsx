@@ -118,7 +118,7 @@ export default async function ArtistPage({ params }: ArtistPageProps) {
                 </div>
                 <Disc3
                   aria-hidden="true"
-                  className="size-6 text-[var(--electric-soft)]"
+                  className="size-6 text-[var(--accent-foreground)]"
                 />
               </div>
             </CardHeader>
@@ -252,7 +252,7 @@ function ArtistShell({ artistId }: { readonly artistId: string }) {
           <Card>
             <Disc3
               aria-hidden="true"
-              className="size-5 text-[var(--electric-soft)]"
+              className="size-5 text-[var(--accent-foreground)]"
             />
             <h2 className="mt-8 text-xl font-semibold tracking-[-0.025em]">
               Discography
