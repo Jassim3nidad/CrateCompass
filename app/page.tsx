@@ -31,14 +31,14 @@ const valueCards = [
     description:
       "Explore albums, EPs, singles, dates, and relationships through canonical MusicBrainz context with visible references.",
     icon: BookOpenText,
-    accent: "text-[var(--electric)]",
+    accent: "text-[var(--electric-soft)]",
   },
 ] as const;
 
 export default function Home() {
   return (
     <>
-      <section className="relative overflow-hidden border-b border-[var(--border)]">
+      <section className="relative overflow-hidden">
         <div aria-hidden="true" className="compass-grid absolute inset-0" />
         <div className="page-shell relative grid min-h-[calc(100vh-4.25rem)] items-center gap-12 py-16 lg:grid-cols-[minmax(0,1.15fr)_minmax(22rem,0.65fr)]">
           <div className="max-w-4xl">
@@ -73,7 +73,7 @@ export default function Home() {
             variant="raised"
             className="noise-surface relative overflow-hidden p-0"
           >
-            <div className="border-b border-[var(--border)] p-5 sm:p-6">
+            <div className="p-5 sm:p-6">
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <p className="text-xs font-bold tracking-[0.18em] text-[var(--amber-soft)] uppercase">
@@ -144,7 +144,7 @@ export default function Home() {
           variant="quiet"
           className="grid gap-8 md:grid-cols-[auto_1fr_auto] md:items-center"
         >
-          <span className="grid size-12 place-items-center rounded-full border border-[var(--border)] bg-[var(--surface)] text-[var(--muted)]">
+          <span className="elev-inset grid size-12 place-items-center rounded-full bg-[var(--surface)] text-[var(--muted)]">
             <Library aria-hidden="true" className="size-5" />
           </span>
           <div>
