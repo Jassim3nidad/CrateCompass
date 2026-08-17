@@ -1,3 +1,4 @@
+import { CatalogStamp } from "@/components/ui/catalog-stamp";
 import { ProviderAttribution } from "@/features/discovery/components/provider-attribution";
 import type { CanonicalArtist } from "@/types/music";
 
@@ -98,6 +99,24 @@ export function ArtistHeader({
       <ProviderAttribution
         className="mt-6 text-xs leading-5 text-[var(--muted-dim)]"
         sources={[{ label: "MusicBrainz", url: artist.attribution.sourceUrl }]}
+      />
+
+      <CatalogStamp
+        entries={[
+          {
+            label: "MBID",
+            value: artist.mbid.slice(0, 8),
+            title: artist.mbid,
+            href: artist.attribution.sourceUrl,
+          },
+          {
+            label: "Retrieved",
+            value: new Date(artist.attribution.retrievedAt).toLocaleDateString(
+              undefined,
+              { year: "numeric", month: "short", day: "numeric" },
+            ),
+          },
+        ]}
       />
     </header>
   );

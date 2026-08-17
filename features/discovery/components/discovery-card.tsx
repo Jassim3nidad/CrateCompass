@@ -6,6 +6,7 @@ import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { CatalogStamp } from "@/components/ui/catalog-stamp";
 import {
   saveDiscoveryAction,
   unsaveDiscoveryAction,
@@ -161,6 +162,17 @@ export function DiscoveryCard({
         seedName={seedName}
         candidateMbid={candidate.mbid}
         candidateName={candidate.name}
+      />
+
+      <CatalogStamp
+        entries={[
+          {
+            label: "MBID",
+            value: candidate.mbid.slice(0, 8),
+            title: candidate.mbid,
+            href: candidate.sourceUrl,
+          },
+        ]}
       />
     </Card>
   );
