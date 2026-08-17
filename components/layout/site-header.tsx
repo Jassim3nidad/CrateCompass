@@ -4,6 +4,7 @@ import Link from "next/link";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { NavLink } from "@/components/layout/nav-link";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { signOut } from "@/features/auth/actions";
 import { primaryNavigation } from "@/lib/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -13,17 +14,17 @@ export async function SiteHeader() {
   const { data } = await supabase.auth.getClaims();
   const isAuthenticated = Boolean(data?.claims?.sub);
   return (
-    <header className="sticky top-0 z-40 border-b border-[var(--border)] bg-[color-mix(in_srgb,var(--background)_88%,transparent)] backdrop-blur-xl">
+    <header className="sticky top-0 z-40 bg-[color-mix(in_srgb,var(--neu-base)_88%,transparent)] backdrop-blur-xl">
       <div className="mx-auto flex h-17 max-w-[90rem] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         <Link
           href="/"
           className="focus-ring group inline-flex min-h-11 items-center gap-3 rounded-full pr-3"
           aria-label="CrateCompass home"
         >
-          <span className="grid size-9 place-items-center rounded-full border border-[var(--border-strong)] bg-[var(--surface-raised)] text-[var(--amber-soft)] transition-colors group-hover:border-[var(--amber)] motion-reduce:transition-none">
+          <span className="surface-raised elev-flat grid size-9 place-items-center rounded-full text-[var(--amber-soft)] transition-shadow motion-reduce:transition-none">
             <Compass aria-hidden="true" className="size-4" />
           </span>
-          <span className="text-sm font-bold tracking-[-0.02em] text-[var(--foreground)]">
+          <span className="text-sm font-bold tracking-[-0.02em] text-[var(--text-primary)]">
             CrateCompass
           </span>
         </Link>
@@ -36,7 +37,7 @@ export async function SiteHeader() {
             <NavLink
               key={item.href}
               href={item.href}
-              className="focus-ring min-h-10 rounded-full px-4 py-2 text-sm font-medium text-[var(--muted)] transition-colors duration-[var(--duration-fast)] hover:bg-[var(--surface)] hover:text-[var(--foreground)] aria-[current=page]:bg-[var(--surface-raised)] aria-[current=page]:text-[var(--foreground)] motion-reduce:transition-none"
+              className="focus-ring hover:surface-raised hover:elev-flat aria-[current=page]:surface-raised aria-[current=page]:elev-flat min-h-10 rounded-full px-4 py-2 text-sm font-medium text-[var(--text-secondary)] transition-[color,box-shadow] duration-[var(--duration-fast)] hover:text-[var(--text-primary)] aria-[current=page]:text-[var(--text-primary)] motion-reduce:transition-none"
             >
               {item.label}
             </NavLink>
@@ -62,19 +63,26 @@ export async function SiteHeader() {
           )}
         </div>
 
-        <MobileNav>
-          {isAuthenticated ? (
-            <form action={signOut}>
-              <Button type="submit" variant="secondary" className="mt-2 w-full">
-                Sign out
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <MobileNav>
+            {isAuthenticated ? (
+              <form action={signOut}>
+                <Button
+                  type="submit"
+                  variant="secondary"
+                  className="mt-2 w-full"
+                >
+                  Sign out
+                </Button>
+              </form>
+            ) : (
+              <Button asChild variant="accent" className="mt-2 w-full">
+                <Link href="/auth/sign-in">Sign in</Link>
               </Button>
-            </form>
-          ) : (
-            <Button asChild variant="accent" className="mt-2 w-full">
-              <Link href="/auth/sign-in">Sign in</Link>
-            </Button>
-          )}
-        </MobileNav>
+            )}
+          </MobileNav>
+        </div>
       </div>
     </header>
   );
