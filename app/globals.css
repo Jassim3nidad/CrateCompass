@@ -339,12 +339,11 @@ body {
      whole time, and on Windows that fallback for the display serif was
      literally Times New Roman. */
   --font-sans-stack:
-    var(--ff-sans), ui-sans-serif, system-ui, -apple-system,
-    BlinkMacSystemFont, "Segoe UI", sans-serif;
+    var(--ff-sans), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
   --font-display-stack: var(--ff-display), Georgia, "Times New Roman", serif;
   --font-mono-stack:
-    var(--ff-mono), ui-monospace, "SFMono-Regular", Menlo, Consolas,
-    monospace;
+    var(--ff-mono), ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
