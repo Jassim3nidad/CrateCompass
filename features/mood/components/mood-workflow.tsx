@@ -393,19 +393,25 @@ export function MoodWorkflow({
                       disabled={pending}
                       // Nested inside a raised Card — sunken, not a second
                       // raised surface. Hover only brightens the fill.
-                      className="focus-ring surface-sunken elev-inset hover:surface-raised flex w-full items-center justify-between gap-4 rounded-[var(--r-md)] p-4 text-left transition-[background-color] disabled:opacity-50"
+                      // Disabled goes flat + muted like every other disabled
+                      // control, not opacity — but the child spans below set
+                      // their own explicit colours, which an opacity-free
+                      // disabled:text-* on this element alone can't reach
+                      // (colour only inherits when a descendant doesn't set
+                      // its own), hence `group` / `group-disabled:` on each.
+                      className="group focus-ring surface-sunken elev-inset hover:surface-raised disabled:surface-base flex w-full items-center justify-between gap-4 rounded-[var(--r-md)] p-4 text-left transition-[background-color,box-shadow] disabled:cursor-not-allowed disabled:shadow-none"
                     >
                       <span className="min-w-0">
-                        <span className="block font-semibold text-[var(--foreground)]">
+                        <span className="block font-semibold text-[var(--foreground)] group-disabled:text-[var(--text-muted)]">
                           {seed.name}
                         </span>
-                        <span className="mt-1 block text-sm text-[var(--muted)]">
+                        <span className="mt-1 block text-sm text-[var(--muted)] group-disabled:text-[var(--text-muted)]">
                           {[seed.disambiguation, seed.type, seed.country]
                             .filter(Boolean)
                             .join(" · ") || "No disambiguation recorded"}
                         </span>
                       </span>
-                      <span className="shrink-0 text-xs text-[var(--muted-dim)]">
+                      <span className="shrink-0 text-xs text-[var(--muted-dim)] group-disabled:text-[var(--text-muted)]">
                         {seed.rankedByRelevanceOnly
                           ? "no tag votes"
                           : `${seed.tagVotes} tag votes`}
