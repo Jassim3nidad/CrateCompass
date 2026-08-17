@@ -3,15 +3,25 @@ import type * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-const cardVariants = cva("rounded-[var(--radius-lg)] border p-5 sm:p-6", {
+const cardVariants = cva("rounded-[var(--r-lg)] p-5 sm:p-6", {
   variants: {
     variant: {
-      default: "border-[var(--border)] bg-[var(--surface)]",
-      raised:
-        "border-[var(--border-strong)] bg-[var(--surface-raised)] shadow-[var(--elevation-3)]",
+      // `raised` had extra emphasis (a heavier shadow) over `default` in the
+      // legacy system; --elev-raised is the ceiling here (the brief reserves
+      // the one colour shadow for the accent button), so both variants now
+      // render identically. Names kept for API compatibility.
+      default: "surface-raised elev-raised",
+      raised: "surface-raised elev-raised",
+      // Emphasis comes from a warmer fill, not a second kind of shadow —
+      // still --elev-raised underneath.
       accent:
-        "border-[color-mix(in_srgb,var(--violet)_40%,var(--border))] bg-[linear-gradient(145deg,color-mix(in_srgb,var(--violet)_15%,var(--surface)),var(--surface))]",
-      quiet: "border-transparent bg-[var(--surface-subtle)]",
+        "bg-[image:linear-gradient(145deg,color-mix(in_srgb,var(--accent)_15%,var(--neu-raised)),var(--neu-raised))] elev-raised",
+      // Sunken, not just unshadowed: this is also the variant to reach for
+      // when a card sits inside another raised card. Stacking --elev-raised
+      // on --elev-raised reads as two competing "pop out" claims on the same
+      // surface family — --elev-inset instead reads as content *within* the
+      // outer card, which is what nesting actually means here.
+      quiet: "surface-sunken elev-inset",
     },
   },
   defaultVariants: {
@@ -44,7 +54,7 @@ export function CardTitle({
   return (
     <h2
       className={cn(
-        "text-xl font-semibold tracking-[-0.025em] text-[var(--foreground)]",
+        "text-xl font-semibold tracking-[-0.025em] text-[var(--text-primary)]",
         className,
       )}
       {...props}
@@ -58,7 +68,10 @@ export function CardDescription({
 }: React.HTMLAttributes<HTMLParagraphElement>) {
   return (
     <p
-      className={cn("text-sm leading-6 text-[var(--muted)]", className)}
+      className={cn(
+        "text-sm leading-6 text-[var(--text-secondary)]",
+        className,
+      )}
       {...props}
     />
   );
