@@ -15,10 +15,13 @@ export function ErrorState({
   return (
     <Card
       role="alert"
-      className="border-[color-mix(in_srgb,var(--danger)_35%,var(--border))] bg-[color-mix(in_srgb,var(--danger)_7%,var(--surface))]"
+      // The border-color override here used to pair with a border-width
+      // that Card no longer sets, so it was already dead — removed rather
+      // than carried forward.
+      className="bg-[color-mix(in_srgb,var(--danger)_7%,var(--surface))]"
     >
       <div className="flex items-start gap-4">
-        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-[color-mix(in_srgb,var(--danger)_15%,transparent)] text-[var(--danger-soft)]">
+        <span className="elev-inset grid size-10 shrink-0 place-items-center rounded-full bg-[color-mix(in_srgb,var(--danger)_15%,transparent)] text-[var(--danger-soft)]">
           <CircleAlert aria-hidden="true" className="size-5" />
         </span>
         <div>
