@@ -40,8 +40,6 @@
      never defined, so the declaration was invalid and the link fell back to
      inherited colour. */
   --accent-soft: var(--violet-soft);
-  --radius-lg: 1.5rem;
-  --radius-md: 1rem;
 
   /* Motion. Four durations and two curves, so a transition is chosen from a
      scale rather than invented per component. --ease-out decelerates hard,
@@ -51,16 +49,7 @@
   --duration-slow: 320ms;
   --duration-slower: 560ms;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
   --stagger-step: 55ms;
-
-  /* Elevation, as a scale rather than per-component shadow literals. Kept for
-     floating overlays (toasts, dropdown menus) that sit *above* the material
-     rather than being extruded from it — the neumorphic pair below covers
-     embedded surfaces (cards, buttons, inputs). */
-  --elevation-1: 0 1px 2px rgb(0 0 0 / 0.3);
-  --elevation-2: 0 12px 32px rgb(0 0 0 / 0.22);
-  --elevation-3: 0 24px 80px rgb(0 0 0 / 0.28);
 
   /**
    * Neumorphic token layer (Phase 1 of the soft-UI migration).
@@ -98,9 +87,8 @@
 
   /* Dark-only exception to "no borders": at dark-theme intensities, the
      diffuse light/dark shadow pair alone doesn't read as "popped out" next to
-     an --elev-inset well of similar overall lightness (confirmed by
-     rendering all three recipes side by side — see app/dev-depth-check).
-     A crisp 1px highlight along the top edge sells the raised cue the way
+     an --elev-inset well of similar overall lightness. A crisp 1px highlight
+     along the top edge sells the raised cue the way
      the light theme's much stronger shadow-light (0.95 alpha) already does
      without one. Neutralised to transparent in the light override below. */
   --depth-highlight: inset 0 1px 0 rgb(255 255 255 / 0.06);
@@ -129,7 +117,6 @@
   --text-muted: #9b96a1;
   --text-on-accent: #ffffff;
 
-  --r-sm: 0.75rem;
   --r-md: 1.25rem;
   --r-lg: 1.75rem;
   --r-pill: 999px;
@@ -187,22 +174,31 @@
    * half of an existing fill/foreground split (base --amber/--success/
    * --danger/--violet stay theme-invariant fills, used only via
    * color-mix() — grepped zero direct usages of the -soft tokens as a
-   * fill anywhere). Overriding them here darkens text and icons without
-   * touching a single tinted background. Measured against every light
-   * surface they render on (worst case noted):
-   *   amber-soft   4.70:1 (surface-sunken)
-   *   success-soft 5.18:1 (surface-sunken)
-   *   danger-soft  4.65:1 (surface-sunken)
-   *   violet-soft  5.36:1 (surface-sunken) — same value as
-   *                --accent-foreground, same family, reused rather than
-   *                inventing a second violet.
-   *   electric-soft 4.55:1 (surface-sunken)
+   * fill anywhere), so darkening them further never touches a tinted
+   * background. First pass only tested these against plain surface
+   * tokens; StatusBadge and StrengthBadge actually render them on top of
+   * a color-mix() tint of the corresponding fill token, which is a
+   * different (and sometimes harder) background. Re-measured against the
+   * real composited badge fill on every surface it renders on (worst
+   * case noted, resolving color-mix(fill P%, transparent) as fill at P%
+   * opacity over the surface):
+   *   amber-soft    5.10:1 (neu-sunken, composited amber(10%) fill)
+   *   success-soft  4.81:1 (neu-sunken, composited success(10%) fill) —
+   *                 already cleared the badge case at its old value, left
+   *                 unchanged.
+   *   danger-soft   4.85:1 (neu-sunken, composited danger(10%) fill)
+   *   violet-soft   5.19:1 (neu-sunken, composited violet(16%) fill,
+   *                 StrengthBadge's "strong" tier) — same value as
+   *                 --accent-foreground, same family, reused rather than
+   *                 inventing a second violet.
+   *   electric-soft 5.12:1 (neu-sunken, composited electric(12%) fill,
+   *                 StrengthBadge's "moderate" tier)
    */
-  --amber-soft: #8a5a12;
+  --amber-soft: #7d5210;
   --success-soft: #1a6b42;
-  --danger-soft: #b23a4a;
-  --violet-soft: #5a3fd6;
-  --electric-soft: #1a6aa8;
+  --danger-soft: #a3323f;
+  --violet-soft: #4f37c2;
+  --electric-soft: #155d8f;
 
   /**
    * Legacy tokens, given light values instead of being migrated one
@@ -228,11 +224,6 @@
   --foreground: #2d3440;
   --muted: #5a6472;
   --muted-dim: #5c6674;
-  /* --elevation-1/2/3 intentionally not overridden: they're black-alpha drop
-     shadows for floating overlays (toasts, dropdown menus) sitting above the
-     page rather than embedded in it, and a black shadow at low alpha reads
-     correctly against a light surface without retuning — the same reason
-     these were left out of the neumorphic --elev-* recipes' scope. */
 
   /* Dark's value lives on the unrelated `html {}` rule below (predates this
      migration); this is its light-theme counterpart. Tells the UA to draw
@@ -340,10 +331,20 @@ html {
 }
 
 body {
+  /* var(--ff-*) is next/font's actual loaded asset (see app/fonts.ts) — the
+     names after it are the fallback chain for the brief instant before it
+     paints, not a wishlist. Previously these stacks led with unloaded
+     font-family names (Inter, Iowan Old Style) with no @font-face or
+     next/font anywhere in the app: every visitor rendered the fallback the
+     whole time, and on Windows that fallback for the display serif was
+     literally Times New Roman. */
   --font-sans-stack:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-    "Segoe UI", sans-serif;
-  --font-display-stack: Iowan Old Style, Baskerville, "Times New Roman", serif;
+    var(--ff-sans), ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display-stack: var(--ff-display), Georgia, "Times New Roman", serif;
+  --font-mono-stack:
+    var(--ff-mono), ui-monospace, "SFMono-Regular", Menlo, Consolas,
+    monospace;
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
