@@ -68,10 +68,10 @@ export function DiscoveryCard({
   }
 
   return (
-    <Card
-      variant="raised"
-      className="transition-colors hover:border-[var(--muted-dim)] motion-reduce:transition-none"
-    >
+    // hover:border used to pair with a border-width Card no longer sets —
+    // dead since the primitive conversion, removed rather than carried
+    // forward. Raised is already the ceiling, so no replacement hover effect.
+    <Card variant="raised">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <p className="font-mono text-xs text-[var(--muted-dim)]">
