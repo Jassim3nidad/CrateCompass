@@ -149,7 +149,9 @@ export default async function ConnectionsPage({
               />
             ) : null}
             {connection && connection.status !== "revoked" ? (
-              <DisconnectSpotifyForm />
+              <DisconnectSpotifyForm
+                secondary={presentation.action === "reconnect"}
+              />
             ) : null}
           </div>
         </Card>
