@@ -29,8 +29,9 @@ export function AppProviders({ children }: { readonly children: ReactNode }) {
         // Sonner's own default shadow, not a neumorphic recipe: a toast is a
         // genuine floating overlay — transient, layered above the page,
         // dismissed by the user — not a surface embedded in it, so a
-        // conventional drop-shadow is the correct read here (same reasoning
-        // as --elevation-1/2/3, kept for exactly this kind of element).
+        // conventional drop-shadow is the correct read here. (Confirmed
+        // live: Sonner ships its own box-shadow, unrelated to any token in
+        // this file — nothing here needs to supply one.)
         // Border removed to match the rest of the system.
         toastOptions={{
           classNames: {
