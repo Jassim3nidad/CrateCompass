@@ -34,7 +34,7 @@ export function ArtistHeader({
   const tags = [...new Set([...artist.genres, ...artist.tags])].slice(0, 8);
 
   return (
-    <header className="rounded-[var(--radius-lg)] border border-[var(--border-strong)] bg-[linear-gradient(150deg,color-mix(in_srgb,var(--violet)_12%,var(--surface-raised)),var(--surface))] p-6 sm:p-8">
+    <header className="elev-raised rounded-[var(--r-lg)] bg-[image:linear-gradient(150deg,color-mix(in_srgb,var(--accent)_12%,var(--neu-raised)),var(--neu-raised))] p-6 sm:p-8">
       <p className="text-xs font-bold tracking-[0.2em] text-[var(--amber-soft)] uppercase">
         Canonical artist
       </p>
@@ -82,7 +82,7 @@ export function ArtistHeader({
           {tags.map((tag) => (
             <li
               key={tag}
-              className="rounded-full border border-[var(--border)] bg-[var(--surface-subtle)] px-3 py-1 text-xs text-[var(--muted)]"
+              className="rounded-full bg-[var(--surface-subtle)] px-3 py-1 text-xs text-[var(--muted)]"
             >
               {tag}
             </li>
