@@ -9,7 +9,10 @@ export const Textarea = React.forwardRef<
   <textarea
     ref={ref}
     className={cn(
-      "min-h-32 w-full resize-y rounded-2xl border border-[var(--border-strong)] bg-[var(--surface-subtle)] px-4 py-3 text-base leading-7 text-[var(--foreground)] transition-colors outline-none placeholder:text-[var(--muted-dim)] hover:border-[var(--muted-dim)] focus-visible:border-[var(--focus)] focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--focus)_32%,transparent)] disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none",
+      // Same focus-ring fix as Input: shadow is the resting state here, so
+      // a ring-offset band would collide with it the way phase-10 already
+      // documented for buttons.
+      "focus-ring surface-sunken elev-inset disabled:surface-base min-h-32 w-full resize-y rounded-[var(--r-md)] px-4 py-3 text-base leading-7 text-[var(--foreground)] transition-shadow placeholder:text-[var(--muted-dim)] disabled:cursor-not-allowed disabled:text-[var(--text-muted)] disabled:shadow-none motion-reduce:transition-none",
       className,
     )}
     {...props}
