@@ -43,7 +43,7 @@ export function SpotifyLink({
         href={state.url}
         target="_blank"
         rel="noreferrer noopener"
-        className="focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-[var(--border-strong)] bg-[var(--surface)] px-4 text-sm font-semibold text-[var(--foreground)] transition-colors hover:bg-[var(--surface-raised)]"
+        className="focus-ring surface-sunken elev-inset hover:surface-raised inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--r-pill)] px-4 text-sm font-semibold text-[var(--foreground)] transition-[background-color]"
       >
         <ExternalLink aria-hidden="true" className="size-4" />
         Open {state.name} in Spotify
@@ -66,7 +66,7 @@ export function SpotifyLink({
       </Button>
 
       {state.status === "ambiguous" ? (
-        <div className="mt-3 rounded-[var(--radius-md)] border border-[color-mix(in_srgb,var(--amber)_35%,var(--border))] bg-[color-mix(in_srgb,var(--amber)_8%,transparent)] p-3">
+        <div className="elev-inset mt-3 rounded-[var(--r-md)] bg-[color-mix(in_srgb,var(--amber)_8%,transparent)] p-3">
           <p className="text-sm leading-6 text-[var(--amber-soft)]">
             {state.reason}
           </p>
