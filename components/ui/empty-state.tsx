@@ -17,7 +17,7 @@ export function EmptyState({
       variant="quiet"
       className="flex min-h-72 flex-col items-center justify-center text-center"
     >
-      <span className="mb-5 grid size-12 place-items-center rounded-full border border-[var(--border)] bg-[var(--surface)] text-[var(--muted)]">
+      <span className="elev-inset mb-5 grid size-12 place-items-center rounded-full bg-[var(--surface)] text-[var(--muted)]">
         <ArchiveX aria-hidden="true" className="size-5" />
       </span>
       <h2 className="text-xl font-semibold tracking-[-0.025em] text-[var(--foreground)]">
