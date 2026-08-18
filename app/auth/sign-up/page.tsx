@@ -16,7 +16,7 @@ export default async function SignUpPage({
     <div className="page-shell grid min-h-[calc(100vh-13rem)] place-items-center">
       <div className="w-full max-w-md">
         <div className="mb-7 text-center">
-          <span className="surface-raised elev-flat mx-auto grid size-12 place-items-center rounded-full text-[#aa96ff]">
+          <span className="surface-raised elev-flat mx-auto grid size-12 place-items-center rounded-full text-[var(--amber-soft)]">
             <Compass aria-hidden="true" className="size-5" />
           </span>
           <h1 className="font-display mt-5 text-4xl tracking-[-0.04em]">

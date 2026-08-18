@@ -3,11 +3,17 @@
 import { Button } from "@/components/ui/button";
 
 export default function GlobalError({ reset }: { readonly reset: () => void }) {
+  // Hardcoded hex, not var(--token): this renders in place of the root
+  // layout, which is what just failed, so it can't safely assume
+  // globals.css's custom properties are available. Values are copied from
+  // the dark theme (--background, --foreground, --amber-soft, --muted) and
+  // need updating by hand if those ever change, which is what happened
+  // silently here until this comment existed.
   return (
     <html lang="en">
       <body className="grid min-h-screen place-items-center bg-[#0b0b0f] p-6 text-[#f4f0e8]">
         <main className="max-w-lg text-center">
-          <p className="text-sm font-bold tracking-[0.2em] text-[#edbc75] uppercase">
+          <p className="text-sm font-bold tracking-[0.2em] text-[#e8935a] uppercase">
             CrateCompass
           </p>
           <h1 className="mt-4 text-4xl font-semibold tracking-[-0.04em]">
